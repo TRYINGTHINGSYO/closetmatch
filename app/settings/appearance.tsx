@@ -1,33 +1,23 @@
-import { ScrollView, StyleSheet, Text } from 'react-native';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text } from 'react-native';
 import { AppearanceForm } from '@/components/appearance/AppearanceForm';
-import { Button } from '@/components/ui/Button';
+import { ScreenShell } from '@/components/layout/ScreenShell';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 
 export default function AppearanceSettingsScreen() {
   const theme = useTheme();
-  const router = useRouter();
 
   return (
-    <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={{ flex: 1 }}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <Button title="Back" variant="ghost" onPress={() => router.back()} />
-          <Text style={[styles.title, { color: theme.ink }]}>Look & feel</Text>
-          <Text style={{ ...typography.body, color: theme.inkMuted }}>
-            Personalize ClosetMatch with your colors, lighting, and background. Changes apply immediately on this device.
-          </Text>
-          <AppearanceForm />
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+    <ScreenShell scroll contentStyle={{ gap: 12 }}>
+      <Text style={[styles.title, { color: theme.ink }]}>Look & feel</Text>
+      <Text style={{ ...typography.body, color: theme.inkMuted }}>
+        Personalize ClosetMatch with your colors, lighting, and background. Changes apply immediately on this device.
+      </Text>
+      <AppearanceForm />
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20, gap: 12, paddingBottom: 48 },
   title: { ...typography.hero },
 });

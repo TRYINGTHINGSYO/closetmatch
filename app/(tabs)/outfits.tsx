@@ -1,14 +1,14 @@
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Chip } from '@/components/ui/Chip';
+import { ReadyOutfitCard } from '@/components/recommendations/ReadyOutfitCard';
+import { ScreenShell } from '@/components/layout/ScreenShell';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
-import { useMemo, useState } from 'react';
 
 export default function OutfitsScreen() {
   const theme = useTheme();
@@ -26,87 +26,63 @@ export default function OutfitsScreen() {
   }, [outfits, tab, planned]);
 
   return (
-    <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={{ flex: 1 }}>
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.ink }]}>Outfits</Text>
-          <Button
-            title="Build"
-            onPress={() => router.push('/outfits/builder')}
-            style={{ paddingHorizontal: 16, minHeight: 40 }}
+    <ScreenShell scroll>
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: theme.ink }]}>Outfits</Text>
+        <Button
+          title="Build"
+          onPress={() => router.push('/outfits/builder')}
+          style={{ paddingHorizontal: 16, minHeight: 40 }}
+        />
+      </View>
+      <View style={styles.tabs}>
+        {(['saved', 'worn', 'favorites', 'planned'] as const).map((t) => (
+          <Chip
+            key={t}
+            label={t === 'saved' ? 'Saved' : t === 'worn' ? 'Worn' : t === 'favorites' ? 'Favorites' : 'Planned'}
+            selected={tab === t}
+            onPress={() => setTab(t)}
           />
-        </View>
-        <View style={styles.tabs}>
-          {(['saved', 'worn', 'favorites', 'planned'] as const).map((t) => (
-            <Chip
-              key={t}
-              label={t === 'saved' ? 'Saved' : t === 'worn' ? 'Worn' : t === 'favorites' ? 'Favorites' : 'Planned'}
-              selected={tab === t}
-              onPress={() => setTab(t)}
+        ))}
+      </View>
+
+      {list.length === 0 ? (
+        <EmptyState
+          title={
+            tab === 'favorites'
+              ? 'No favorite outfits yet'
+              : tab === 'worn'
+                ? 'Nothing worn yet'
+                : tab === 'planned'
+                  ? 'No planned outfits'
+                  : 'No saved outfits yet'
+          }
+          message={
+            tab === 'planned'
+              ? 'Schedule a look from the builder or an outfit page.'
+              : 'Save a few combinations you already wear so ClosetMatch can learn your style.'
+          }
+          actionLabel={tab === 'planned' ? 'Open calendar' : 'Create outfit'}
+          onAction={() => router.push(tab === 'planned' ? '/outfits/planned' : '/outfits/builder')}
+        />
+      ) : (
+        <View style={styles.grid}>
+          {list.map((item) => (
+            <ReadyOutfitCard
+              key={item.id}
+              outfit={item}
+              onOpen={() => router.push(`/outfits/${item.id}`)}
+              onWear={() => markOutfitWorn(item.id, { rating: 4 })}
             />
           ))}
         </View>
-
-        {list.length === 0 ? (
-          <EmptyState
-            title={
-              tab === 'favorites'
-                ? 'No favorite outfits yet'
-                : tab === 'worn'
-                  ? 'Nothing worn yet'
-                  : tab === 'planned'
-                    ? 'No planned outfits'
-                    : 'No saved outfits yet'
-            }
-            message={
-              tab === 'planned'
-                ? 'Schedule a look from the builder or an outfit page.'
-                : 'Save a few combinations you already wear so ClosetMatch can learn your style.'
-            }
-            actionLabel={tab === 'planned' ? 'Open calendar' : 'Create outfit'}
-            onAction={() =>
-              router.push(tab === 'planned' ? '/outfits/planned' : '/outfits/builder')
-            }
-          />
-        ) : (
-          <FlatList
-            data={list}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => router.push(`/outfits/${item.id}`)}
-                style={[styles.card, { backgroundColor: theme.bgElevated, borderColor: theme.border }]}
-              >
-                <Text style={[styles.name, { color: theme.ink }]}>{item.name}</Text>
-                <Text style={{ ...typography.caption, color: theme.inkMuted }}>
-                  {item.items?.map((i) => i.clothing_item?.name ?? 'Item').join(' · ')}
-                </Text>
-                <Text style={{ ...typography.caption, color: theme.inkSoft, marginTop: 6 }}>
-                  Worn {item.times_worn}×
-                  {item.rating ? ` · Rated ${item.rating}` : ''}
-                  {item.occasion ? ` · ${item.occasion}` : ''}
-                </Text>
-                <View style={styles.row}>
-                  <Pressable onPress={() => markOutfitWorn(item.id, { rating: 4 })}>
-                    <Text style={{ color: theme.accent, ...typography.label }}>Mark worn</Text>
-                  </Pressable>
-                  <Pressable onPress={() => router.push('/mirror-check/consent')}>
-                    <Text style={{ color: theme.accent, ...typography.label }}>Mirror Check</Text>
-                  </Pressable>
-                </View>
-              </Pressable>
-            )}
-          />
-        )}
-      </SafeAreaView>
-    </LinearGradient>
+      )}
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 20,
     paddingTop: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -117,14 +93,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    padding: 16,
+    paddingVertical: 16,
   },
-  card: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
-    gap: 4,
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  name: { ...typography.subtitle },
-  row: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
 });

@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Platform, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
+import { ScreenShell } from '@/components/layout/ScreenShell';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
@@ -74,51 +73,53 @@ export default function ClothingCaptureScreen() {
   };
 
   return (
-    <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={{ flex: 1 }}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.content}>
-          <Button title="Back" variant="ghost" onPress={() => router.back()} />
-          <Text style={[styles.title, { color: theme.ink }]}>Photograph clothing</Text>
-          <Text style={[styles.sub, { color: theme.inkMuted }]}>
-            Laid flat or hanging, plain background, good lighting, fully visible — without other clothes overlapping.
-          </Text>
+    <ScreenShell scroll contentStyle={{ gap: 12 }}>
+      {Platform.OS === 'web' ? null : <Button title="Back" variant="ghost" onPress={() => router.back()} />}
+      <Text style={[styles.title, { color: theme.ink }]}>Photograph clothing</Text>
+      <Text style={[styles.sub, { color: theme.inkMuted }]}>
+        Laid flat or hanging, plain background, good lighting, fully visible — without other clothes overlapping.
+      </Text>
 
-          {uri ? (
-            <Image source={{ uri }} style={styles.preview} accessibilityLabel="Selected clothing photo" />
-          ) : (
-            <View style={[styles.placeholder, { borderColor: theme.border, backgroundColor: theme.bgElevated }]}>
-              <Text style={{ color: theme.inkSoft, ...typography.body, textAlign: 'center' }}>
-                No photo yet
-              </Text>
-            </View>
-          )}
+      {uri ? (
+        <Image source={{ uri }} style={styles.preview} accessibilityLabel="Selected clothing photo" />
+      ) : (
+        <View style={[styles.placeholder, { borderColor: theme.border, backgroundColor: theme.bgElevated }]}>
+          <Text style={{ color: theme.inkSoft, ...typography.body, textAlign: 'center' }}>No photo yet</Text>
+        </View>
+      )}
 
-          <View style={styles.actions}>
-            <Button title="Take photo" onPress={() => pick(true)} />
-            <Button title="Upload photo" variant="secondary" onPress={() => pick(false)} />
-            {uri ? (
-              <Button title="Retake / choose another" variant="ghost" onPress={() => setUri(null)} />
-            ) : null}
-            <Button
-              title={skipAi ? 'AI analysis off' : 'Skip AI analysis'}
-              variant="ghost"
-              onPress={() => setSkipAi((v) => !v)}
-            />
-            <Button title="Continue" loading={loading} onPress={continueFlow} />
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+      <View style={styles.actions}>
+        {Platform.OS === 'web' ? (
+          <Button title="Upload a photo" onPress={() => pick(false)} />
+        ) : (
+          <Button title="Take photo" onPress={() => pick(true)} />
+        )}
+        {Platform.OS === 'web' ? (
+          <Button title="Use camera" variant="secondary" onPress={() => pick(true)} />
+        ) : (
+          <Button title="Upload photo" variant="secondary" onPress={() => pick(false)} />
+        )}
+        {uri ? (
+          <Button title="Retake / choose another" variant="ghost" onPress={() => setUri(null)} />
+        ) : null}
+        <Button
+          title={skipAi ? 'AI analysis off' : 'Skip AI analysis'}
+          variant="ghost"
+          onPress={() => setSkipAi((v) => !v)}
+        />
+        <Button title="Continue" loading={loading} onPress={continueFlow} />
+      </View>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20, gap: 12, paddingBottom: 40 },
   title: { ...typography.hero },
   sub: { ...typography.body },
-  preview: { width: '100%', height: 360, borderRadius: 20 },
+  preview: { width: '100%', height: 360, borderRadius: 20, maxWidth: 480 },
   placeholder: {
     height: 280,
+    maxWidth: 480,
     borderRadius: 20,
     borderWidth: 1,
     borderStyle: 'dashed',
@@ -126,5 +127,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
-  actions: { gap: 10, marginTop: 8 },
+  actions: { gap: 10, marginTop: 8, maxWidth: 420 },
 });

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts, DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@expo-google-fonts/dm-sans';
@@ -8,6 +8,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { AppThemeProvider, useIsDarkTheme, useTheme } from '@/hooks/useTheme';
 import { AppBackground } from '@/components/ui/AppBackground';
+import { SiteHeader } from '@/components/layout/SiteHeader';
 import { useAppStore } from '@/stores/app-store';
 
 export { ErrorBoundary } from 'expo-router';
@@ -60,8 +61,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 function ThemedApp({ children }: { children: React.ReactNode }) {
   const dark = useIsDarkTheme();
+  const showHeader = Platform.OS === 'web';
   return (
     <AppBackground>
+      {showHeader ? <SiteHeader /> : null}
       <StatusBar style={dark ? 'light' : 'dark'} />
       {children}
     </AppBackground>

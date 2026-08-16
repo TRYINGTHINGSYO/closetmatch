@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
+import { ScreenShell } from '@/components/layout/ScreenShell';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
@@ -38,42 +37,34 @@ export default function SignUpScreen() {
   };
 
   return (
-    <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={{ flex: 1 }}>
-      <SafeAreaView style={styles.safe}>
-        <Text style={[styles.title, { color: theme.ink }]}>Create your closet</Text>
-        <Text style={[styles.sub, { color: theme.inkMuted }]}>
-          Your clothes stay private. ClosetMatch learns only from your choices.
-        </Text>
-        <View style={{ marginTop: 24 }}>
-          <TextField label="Display name" value={displayName} onChangeText={setDisplayName} />
-          <TextField
-            label="Email"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
-          <TextField
-            label="Password"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-          <Button title="Continue" loading={loading} onPress={onSubmit} />
-          <Button
-            title="I already have an account"
-            variant="ghost"
-            onPress={() => router.push('/(auth)/sign-in')}
-            style={{ marginTop: 8 }}
-          />
-        </View>
-      </SafeAreaView>
-    </LinearGradient>
+    <ScreenShell scroll maxWidth={480}>
+      <Text style={[styles.title, { color: theme.ink }]}>Create your closet</Text>
+      <Text style={[styles.sub, { color: theme.inkMuted }]}>
+        Your clothes stay private. ClosetMatch learns only from your choices.
+      </Text>
+      <View style={{ marginTop: 24 }}>
+        <TextField label="Display name" value={displayName} onChangeText={setDisplayName} />
+        <TextField
+          label="Email"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+        <TextField label="Password" secureTextEntry value={password} onChangeText={setPassword} />
+        <Button title="Continue" loading={loading} onPress={onSubmit} />
+        <Button
+          title="I already have an account"
+          variant="ghost"
+          onPress={() => router.push('/(auth)/sign-in')}
+          style={{ marginTop: 8 }}
+        />
+      </View>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, padding: 24 },
-  title: { ...typography.hero, marginTop: 24 },
+  title: { ...typography.hero, marginTop: 8 },
   sub: { ...typography.body, marginTop: 8 },
 });
