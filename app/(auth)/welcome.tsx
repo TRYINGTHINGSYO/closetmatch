@@ -31,6 +31,11 @@ export default function WelcomeScreen() {
             variant="secondary"
             onPress={() => router.push('/(auth)/sign-in')}
           />
+          <Button
+            title="Personalize look"
+            variant="ghost"
+            onPress={() => router.push('/look')}
+          />
         </View>
       </SafeAreaView>
     </LinearGradient>

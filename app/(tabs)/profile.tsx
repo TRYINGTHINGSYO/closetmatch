@@ -35,6 +35,7 @@ export default function ProfileScreen() {
     { label: 'Planned outfits', href: '/outfits/planned' },
     { label: 'Laundry', href: '/laundry' },
     { label: 'Mirror Check history', href: '/mirror-check/history' },
+    { label: 'Look & feel', href: '/settings/appearance' },
     { label: 'Privacy settings', href: '/settings/privacy' },
     { label: 'Notifications', href: '/settings/notifications' },
     { label: 'Weather settings', href: '/settings/weather' },

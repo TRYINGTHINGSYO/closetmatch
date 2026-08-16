@@ -6,7 +6,8 @@ import { useFonts, DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from '@
 import { Fraunces_600SemiBold } from '@expo-google-fonts/fraunces';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { AppThemeProvider, useTheme } from '@/hooks/useTheme';
+import { AppThemeProvider, useIsDarkTheme, useTheme } from '@/hooks/useTheme';
+import { AppBackground } from '@/components/ui/AppBackground';
 import { useAppStore } from '@/stores/app-store';
 
 export { ErrorBoundary } from 'expo-router';
@@ -31,8 +32,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     if (!hydrated) return;
     const inAuth = segments[0] === '(auth)';
     const inOnboarding = segments[0] === '(onboarding)';
+    const inLook = segments[0] === 'look';
 
-    if (!sessionEmail && !inAuth) {
+    if (!sessionEmail && !inAuth && !inLook) {
       router.replace('/(auth)/welcome');
       return;
     }
@@ -54,6 +56,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   return <>{children}</>;
+}
+
+function ThemedApp({ children }: { children: React.ReactNode }) {
+  const dark = useIsDarkTheme();
+  return (
+    <AppBackground>
+      <StatusBar style={dark ? 'light' : 'dark'} />
+      {children}
+    </AppBackground>
+  );
 }
 
 export default function RootLayout() {
@@ -88,20 +100,22 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppThemeProvider>
-        <AuthGate>
-          <StatusBar style="auto" />
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(onboarding)" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="clothing" options={{ headerShown: false }} />
-            <Stack.Screen name="outfits" options={{ headerShown: false }} />
-            <Stack.Screen name="mirror-check" options={{ headerShown: false }} />
-            <Stack.Screen name="laundry" options={{ headerShown: false }} />
-            <Stack.Screen name="settings" options={{ headerShown: false }} />
-            <Stack.Screen name="history" options={{ headerShown: false }} />
-          </Stack>
-        </AuthGate>
+        <ThemedApp>
+          <AuthGate>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }}>
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(onboarding)" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="look" options={{ headerShown: false }} />
+              <Stack.Screen name="clothing" options={{ headerShown: false }} />
+              <Stack.Screen name="outfits" options={{ headerShown: false }} />
+              <Stack.Screen name="mirror-check" options={{ headerShown: false }} />
+              <Stack.Screen name="laundry" options={{ headerShown: false }} />
+              <Stack.Screen name="settings" options={{ headerShown: false }} />
+              <Stack.Screen name="history" options={{ headerShown: false }} />
+            </Stack>
+          </AuthGate>
+        </ThemedApp>
       </AppThemeProvider>
     </QueryClientProvider>
   );

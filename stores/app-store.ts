@@ -26,6 +26,10 @@ import { createMirrorAnalysisProvider } from '@/services/ai/mirror-analysis';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import { invokeEdgeFunction } from '@/lib/supabase/functions';
 import { CATEGORY_TO_DEFAULT_ROLE } from '@/constants';
+import {
+  DEFAULT_APPEARANCE,
+  type AppearancePreferences,
+} from '@/constants/appearance';
 import type { ClothingAnalysisResult } from '@/lib/validation/ai-schemas';
 import type { MirrorAnalysisResult } from '@/lib/validation/ai-schemas';
 
@@ -50,6 +54,7 @@ interface AppState {
     imageUri: string;
     analysis: ClothingAnalysisResult | null;
   } | null;
+  appearance: AppearancePreferences;
 
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
@@ -90,6 +95,8 @@ interface AppState {
   deleteMirrorPhoto: (id: string) => void;
 
   planOutfit: (outfitId: string, date: string, occasion?: string) => PlannedOutfit;
+  updateAppearance: (patch: Partial<AppearancePreferences>) => void;
+  resetAppearance: () => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -100,6 +107,7 @@ export const useAppStore = create<AppState>()(
       lastSignedInEmail: null,
       lastRecommendations: [],
       pendingClothingReview: null,
+      appearance: DEFAULT_APPEARANCE,
 
       signUp: async (email, _password, displayName) => {
         const previous = get().lastSignedInEmail;
@@ -111,10 +119,12 @@ export const useAppStore = create<AppState>()(
           preferences: createDemoPreferences(userId),
         };
         if (previous && previous !== email) {
+          const appearance = get().appearance;
           set({
             ...createEmptyStore(),
             ...next,
             hydrated: true,
+            appearance,
           });
           return;
         }
@@ -138,10 +148,12 @@ export const useAppStore = create<AppState>()(
           preferences: createDemoPreferences(userId),
         };
         if (lastEmail && lastEmail !== email) {
+          const appearance = get().appearance;
           set({
             ...createEmptyStore(),
             ...next,
             hydrated: true,
+            appearance,
           });
           return;
         }
@@ -155,17 +167,32 @@ export const useAppStore = create<AppState>()(
       },
 
       clearLocalAccount: () => {
+        const appearance = get().appearance;
         set({
           ...createEmptyStore(),
           hydrated: true,
           lastSignedInEmail: null,
           lastRecommendations: [],
           pendingClothingReview: null,
+          appearance,
         });
       },
 
       setPendingClothingReview: (review) => {
         set({ pendingClothingReview: review });
+      },
+
+      updateAppearance: (patch) => {
+        set({
+          appearance: {
+            ...(get().appearance ?? DEFAULT_APPEARANCE),
+            ...patch,
+          },
+        });
+      },
+
+      resetAppearance: () => {
+        set({ appearance: DEFAULT_APPEARANCE });
       },
 
       completeOnboarding: (prefs) => {
@@ -684,12 +711,16 @@ export const useAppStore = create<AppState>()(
         wearHistory: state.wearHistory,
         mirrorChecks: state.mirrorChecks,
         plannedOutfits: state.plannedOutfits,
+        appearance: state.appearance,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.hydrated = true;
           if (!state.lastSignedInEmail && state.sessionEmail) {
             state.lastSignedInEmail = state.sessionEmail;
+          }
+          if (!state.appearance) {
+            state.appearance = DEFAULT_APPEARANCE;
           }
         }
       },
