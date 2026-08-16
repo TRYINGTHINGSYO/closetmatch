@@ -23,6 +23,8 @@ import { generateRecommendations } from '@/services/recommendations';
 import { applyReplacementLearning } from '@/services/recommendations/scorer';
 import { createClothingAnalysisProvider } from '@/services/ai/clothing-analysis';
 import { createMirrorAnalysisProvider } from '@/services/ai/mirror-analysis';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
+import { invokeEdgeFunction } from '@/lib/supabase/functions';
 import { CATEGORY_TO_DEFAULT_ROLE } from '@/constants';
 import type { ClothingAnalysisResult } from '@/lib/validation/ai-schemas';
 import type { MirrorAnalysisResult } from '@/lib/validation/ai-schemas';
@@ -34,6 +36,7 @@ function uid(prefix: string): string {
 interface AppState {
   hydrated: boolean;
   sessionEmail: string | null;
+  lastSignedInEmail: string | null;
   profile: Profile | null;
   preferences: UserPreferences | null;
   clothingItems: ClothingItem[];
@@ -43,11 +46,19 @@ interface AppState {
   mirrorChecks: MirrorCheck[];
   plannedOutfits: PlannedOutfit[];
   lastRecommendations: ReturnType<typeof generateRecommendations>;
+  pendingClothingReview: {
+    imageUri: string;
+    analysis: ClothingAnalysisResult | null;
+  } | null;
 
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  completeOnboarding: (prefs: Partial<UserPreferences> & { display_name?: string; location_name?: string; preferred_temperature_unit?: 'f' | 'c' }) => void;
+  clearLocalAccount: () => void;
+  setPendingClothingReview: (
+    review: AppState['pendingClothingReview']
+  ) => void;
+  completeOnboarding: (prefs: Partial<UserPreferences> & { display_name?: string; location_name?: string; preferred_temperature_unit?: 'f' | 'c'; latitude?: number | null; longitude?: number | null }) => void;
   loadDemoWardrobe: () => void;
 
   addClothingItem: (item: Partial<ClothingItem> & Pick<ClothingItem, 'name' | 'category' | 'subcategory' | 'primary_color'>) => ClothingItem;
@@ -86,38 +97,75 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       ...createEmptyStore(),
       hydrated: false,
+      lastSignedInEmail: null,
       lastRecommendations: [],
+      pendingClothingReview: null,
 
       signUp: async (email, _password, displayName) => {
+        const previous = get().lastSignedInEmail;
         const userId = uid('user');
-        set({
+        const next = {
           sessionEmail: email,
+          lastSignedInEmail: email,
           profile: createDemoProfile(userId, displayName),
           preferences: createDemoPreferences(userId),
-        });
+        };
+        if (previous && previous !== email) {
+          set({
+            ...createEmptyStore(),
+            ...next,
+            hydrated: true,
+          });
+          return;
+        }
+        set(next);
       },
 
       signIn: async (email) => {
         const existing = get().profile;
-        if (existing && get().sessionEmail === email) {
-          set({ sessionEmail: email });
+        const lastEmail = get().lastSignedInEmail ?? get().sessionEmail;
+        if (existing && (!lastEmail || lastEmail === email)) {
+          set({ sessionEmail: email, lastSignedInEmail: email });
           return;
         }
         const userId = uid('user');
         const profile = createDemoProfile(userId, email.split('@')[0] ?? 'You');
         profile.onboarding_completed = true;
-        set({
+        const next = {
           sessionEmail: email,
+          lastSignedInEmail: email,
           profile,
           preferences: createDemoPreferences(userId),
-        });
+        };
+        if (lastEmail && lastEmail !== email) {
+          set({
+            ...createEmptyStore(),
+            ...next,
+            hydrated: true,
+          });
+          return;
+        }
+        set(next);
       },
 
       signOut: async () => {
         set({
           sessionEmail: null,
-          // Keep local wardrobe for demo convenience; clear session only
         });
+      },
+
+      clearLocalAccount: () => {
+        set({
+          ...createEmptyStore(),
+          hydrated: true,
+          lastSignedInEmail: null,
+          lastRecommendations: [],
+          pendingClothingReview: null,
+        });
+      },
+
+      setPendingClothingReview: (review) => {
+        set({ pendingClothingReview: review });
       },
 
       completeOnboarding: (prefs) => {
@@ -128,6 +176,8 @@ export const useAppStore = create<AppState>()(
             ...profile,
             display_name: prefs.display_name ?? profile.display_name,
             location_name: prefs.location_name ?? profile.location_name,
+            latitude: prefs.latitude ?? profile.latitude,
+            longitude: prefs.longitude ?? profile.longitude,
             preferred_temperature_unit:
               prefs.preferred_temperature_unit ?? profile.preferred_temperature_unit,
             onboarding_completed: true,
@@ -231,15 +281,33 @@ export const useAppStore = create<AppState>()(
       deleteClothingItem: (id) => {
         set({
           clothingItems: get().clothingItems.filter((c) => c.id !== id),
+          outfits: get().outfits.map((outfit) => ({
+            ...outfit,
+            items: outfit.items?.filter((item) => item.clothing_item_id !== id) ?? [],
+          })),
+          pairings: get().pairings.filter((p) => p.item_a_id !== id && p.item_b_id !== id),
         });
       },
 
       setAvailability: (id, status) => {
-        get().updateClothingItem(id, { availability_status: status });
+        const current = get().clothingItems.find((c) => c.id === id);
+        const wasLaundry =
+          current &&
+          ['dirty', 'in_laundry', 'drying'].includes(current.availability_status);
+        const now = new Date().toISOString();
+        get().updateClothingItem(id, {
+          availability_status: status,
+          ...(status === 'available' && wasLaundry
+            ? { wash_count: (current?.wash_count ?? 0) + 1, last_washed_at: now }
+            : {}),
+        });
       },
 
       analyzeClothing: async (imageUri) => {
-        const provider = createClothingAnalysisProvider();
+        const allowCloud = get().preferences?.allow_cloud_image_processing !== false;
+        const provider = createClothingAnalysisProvider(
+          allowCloud && isSupabaseConfigured ? invokeEdgeFunction : undefined
+        );
         return provider.analyzeClothingImage({ imageUri });
       },
 
@@ -468,7 +536,10 @@ export const useAppStore = create<AppState>()(
       runMirrorCheck: async ({ outfitId, imageUri, occasion }) => {
         const profile = get().profile;
         if (!profile) throw new Error('Not signed in');
-        const provider = createMirrorAnalysisProvider();
+        const allowCloud = get().preferences?.allow_cloud_image_processing !== false;
+        const provider = createMirrorAnalysisProvider(
+          allowCloud && isSupabaseConfigured ? invokeEdgeFunction : undefined
+        );
         const analysis = await provider.analyzeMirrorCheck({
           imageUri,
           occasion,
@@ -604,6 +675,7 @@ export const useAppStore = create<AppState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         sessionEmail: state.sessionEmail,
+        lastSignedInEmail: state.lastSignedInEmail,
         profile: state.profile,
         preferences: state.preferences,
         clothingItems: state.clothingItems,
@@ -614,7 +686,12 @@ export const useAppStore = create<AppState>()(
         plannedOutfits: state.plannedOutfits,
       }),
       onRehydrateStorage: () => (state) => {
-        if (state) state.hydrated = true;
+        if (state) {
+          state.hydrated = true;
+          if (!state.lastSignedInEmail && state.sessionEmail) {
+            state.lastSignedInEmail = state.sessionEmail;
+          }
+        }
       },
     }
   )

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
+import { showAlert } from '@/lib/ui/alert';
 
 export default function AddScreen() {
   const theme = useTheme();
@@ -36,8 +37,15 @@ export default function AddScreen() {
             title="Import sample wardrobe"
             variant="ghost"
             onPress={() => {
-              if (clothingItems.length === 0) loadDemoWardrobe();
-              router.push('/(tabs)/closet');
+              if (clothingItems.length === 0) {
+                loadDemoWardrobe();
+                router.push('/(tabs)/closet');
+                return;
+              }
+              showAlert(
+                'Closet already has clothes',
+                'Sample import only runs on an empty closet so your items are not overwritten.'
+              );
             }}
           />
         </View>

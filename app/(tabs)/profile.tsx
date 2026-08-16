@@ -1,4 +1,4 @@
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
+import { confirmAlert } from '@/lib/ui/alert';
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -16,6 +17,7 @@ export default function ProfileScreen() {
   const outfits = useAppStore((s) => s.outfits);
   const wearHistory = useAppStore((s) => s.wearHistory);
   const signOut = useAppStore((s) => s.signOut);
+  const clearLocalAccount = useAppStore((s) => s.clearLocalAccount);
 
   const mostWorn = [...clothingItems].sort((a, b) => b.wear_count - a.wear_count).slice(0, 3);
   const neverWorn = clothingItems.filter((c) => c.wear_count === 0 || c.never_worn);
@@ -30,18 +32,21 @@ export default function ProfileScreen() {
 
   const links = [
     { label: 'Wear history & calendar', href: '/history' },
+    { label: 'Planned outfits', href: '/outfits/planned' },
     { label: 'Laundry', href: '/laundry' },
+    { label: 'Mirror Check history', href: '/mirror-check/history' },
     { label: 'Privacy settings', href: '/settings/privacy' },
     { label: 'Notifications', href: '/settings/notifications' },
     { label: 'Weather settings', href: '/settings/weather' },
     { label: 'Data export', href: '/settings/export' },
+    { label: 'System status', href: '/settings/system-status' },
   ] as const;
 
   return (
     <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
-          <Text style={[styles.title, { color: theme.ink }]}>{profile?.display_name}</Text>
+          <Text style={[styles.title, { color: theme.ink }]}>{profile?.display_name || 'Your profile'}</Text>
           <Text style={{ ...typography.body, color: theme.inkMuted }}>
             {clothingItems.length} clothes · {outfits.length} outfits · {wearHistory.length} wears
           </Text>
@@ -58,19 +63,29 @@ export default function ProfileScreen() {
           <Text style={[styles.section, { color: theme.ink }]}>Wardrobe analytics</Text>
           <View style={[styles.card, { backgroundColor: theme.bgElevated, borderColor: theme.border }]}>
             <Text style={{ ...typography.label, color: theme.ink }}>Most worn</Text>
-            {mostWorn.map((c) => (
-              <Text key={c.id} style={{ ...typography.caption, color: theme.inkMuted }}>
-                {c.name} · {c.wear_count} wears
+            {mostWorn.length === 0 ? (
+              <Text style={{ ...typography.caption, color: theme.inkSoft }}>
+                Add clothes and mark outfits worn to see this.
               </Text>
-            ))}
+            ) : (
+              mostWorn.map((c) => (
+                <Text key={c.id} style={{ ...typography.caption, color: theme.inkMuted }}>
+                  {c.name} · {c.wear_count} wears
+                </Text>
+              ))
+            )}
             <Text style={{ ...typography.label, color: theme.ink, marginTop: 10 }}>
               Never worn ({neverWorn.length})
             </Text>
-            {neverWorn.slice(0, 3).map((c) => (
-              <Text key={c.id} style={{ ...typography.caption, color: theme.inkMuted }}>
-                {c.name}
-              </Text>
-            ))}
+            {neverWorn.length === 0 ? (
+              <Text style={{ ...typography.caption, color: theme.inkSoft }}>Every item has been worn at least once.</Text>
+            ) : (
+              neverWorn.slice(0, 3).map((c) => (
+                <Text key={c.id} style={{ ...typography.caption, color: theme.inkMuted }}>
+                  {c.name}
+                </Text>
+              ))
+            )}
             <Text style={{ ...typography.label, color: theme.ink, marginTop: 10 }}>
               Lowest cost per wear
             </Text>
@@ -111,33 +126,16 @@ export default function ProfileScreen() {
             title="Delete account"
             variant="danger"
             style={{ marginTop: 8 }}
-            onPress={() =>
-              Alert.alert(
+            onPress={async () => {
+              const ok = await confirmAlert(
                 'Delete account',
-                'This removes local ClosetMatch data on this device. With Supabase connected, account deletion also removes cloud data and private photos.',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                      useAppStore.setState({
-                        sessionEmail: null,
-                        profile: null,
-                        preferences: null,
-                        clothingItems: [],
-                        outfits: [],
-                        pairings: [],
-                        wearHistory: [],
-                        mirrorChecks: [],
-                        plannedOutfits: [],
-                      });
-                      router.replace('/(auth)/welcome');
-                    },
-                  },
-                ]
-              )
-            }
+                'This clears local ClosetMatch data on this device. Cloud account deletion must be handled by the backend before production launch.',
+                'Delete'
+              );
+              if (!ok) return;
+              clearLocalAccount();
+              router.replace('/(auth)/welcome');
+            }}
           />
         </ScrollView>
       </SafeAreaView>

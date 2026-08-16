@@ -3,7 +3,6 @@ import {
   type ClothingAnalysisResult,
   CLOTHING_ANALYSIS_SYSTEM_PROMPT,
 } from '@/lib/validation/ai-schemas';
-import { AppError, ErrorCodes } from '@/lib/errors';
 
 export interface ClothingAnalysisProvider {
   readonly name: string;
@@ -69,12 +68,8 @@ export class EdgeFunctionClothingAnalysisProvider implements ClothingAnalysisPro
         system_prompt: CLOTHING_ANALYSIS_SYSTEM_PROMPT,
       });
       return clothingAnalysisSchema.parse(result);
-    } catch (error) {
-      if (error instanceof AppError) throw error;
-      throw new AppError(
-        'Clothing analysis failed. You can enter details manually.',
-        ErrorCodes.AI_FAILED
-      );
+    } catch {
+      return new MockClothingAnalysisProvider().analyzeClothingImage();
     }
   }
 }

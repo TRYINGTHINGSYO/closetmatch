@@ -8,6 +8,8 @@ import { TextField } from '@/components/ui/TextField';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
+import { geocodeLocation } from '@/services/weather/provider';
+import { showAlert } from '@/lib/ui/alert';
 import { useState } from 'react';
 
 export default function WeatherSettingsScreen() {
@@ -17,6 +19,7 @@ export default function WeatherSettingsScreen() {
   const preferences = useAppStore((s) => s.preferences);
   const [city, setCity] = useState(profile?.location_name ?? '');
   const [sensitivity, setSensitivity] = useState(preferences?.temperature_sensitivity ?? 0);
+  const [saving, setSaving] = useState(false);
 
   return (
     <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={{ flex: 1 }}>
@@ -42,16 +45,31 @@ export default function WeatherSettingsScreen() {
         </View>
         <Button
           title="Save"
+          loading={saving}
           style={{ marginTop: 24 }}
-          onPress={() => {
+          onPress={async () => {
+            setSaving(true);
+            const geo = city.trim() ? await geocodeLocation(city) : null;
             useAppStore.setState((s) => ({
               profile: s.profile
-                ? { ...s.profile, location_name: city || null }
+                ? {
+                    ...s.profile,
+                    location_name: geo?.location_name ?? (city || null),
+                    latitude: geo?.latitude ?? s.profile.latitude,
+                    longitude: geo?.longitude ?? s.profile.longitude,
+                  }
                 : s.profile,
               preferences: s.preferences
                 ? { ...s.preferences, temperature_sensitivity: sensitivity, weather_enabled: true }
                 : s.preferences,
             }));
+            setSaving(false);
+            if (city.trim() && !geo) {
+              showAlert(
+                'City saved',
+                'We could not look up coordinates for that name. Weather will keep using the previous location.'
+              );
+            }
             router.back();
           }}
         />

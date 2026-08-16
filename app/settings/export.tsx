@@ -1,4 +1,4 @@
-import { Alert, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
+import { showAlert } from '@/lib/ui/alert';
 
 export default function ExportSettingsScreen() {
   const theme = useTheme();
@@ -21,7 +22,6 @@ export default function ExportSettingsScreen() {
       preferences: state.preferences,
       clothing_items: state.clothingItems.map((c) => ({
         ...c,
-        // Do not include raw photo URLs in analytics-style exports by default
         primary_image_url: undefined,
       })),
       outfits: state.outfits,
@@ -37,10 +37,19 @@ export default function ExportSettingsScreen() {
     };
 
     const json = JSON.stringify(payload, null, 2);
+    const filename = `closetmatch-export-${new Date().toISOString().slice(0, 10)}.json`;
 
     if (Platform.OS === 'web') {
-      Alert.alert('Export ready', `Export JSON length: ${json.length} characters. Copy from console in web builds.`);
-      console.info('[ClosetMatch export]', json.slice(0, 500) + '…');
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      showAlert('Export downloaded', `${filename} is in your downloads folder.`);
       return;
     }
 
@@ -49,14 +58,14 @@ export default function ExportSettingsScreen() {
         (FileSystem as { cacheDirectory?: string | null }).cacheDirectory ??
         (FileSystem as { documentDirectory?: string | null }).documentDirectory;
       if (!dir) {
-        Alert.alert('Export prepared', `Generated ${json.length} characters of JSON.`);
+        showAlert('Export prepared', `Generated ${json.length} characters of JSON.`);
         return;
       }
-      const path = `${dir}closetmatch-export.json`;
+      const path = `${dir}${filename}`;
       await FileSystem.writeAsStringAsync(path, json);
-      Alert.alert('Export saved', `Saved to ${path}`);
+      showAlert('Export saved', `Saved to ${path}`);
     } catch {
-      Alert.alert('Export prepared', `Generated ${json.length} characters of JSON.`);
+      showAlert('Export prepared', `Generated ${json.length} characters of JSON.`);
     }
   };
 

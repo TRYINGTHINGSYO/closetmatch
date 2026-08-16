@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
@@ -10,23 +10,16 @@ import { CLOTHING_CATEGORIES } from '@/constants';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
-import { clothingAnalysisSchema } from '@/lib/validation/ai-schemas';
+import { showAlert } from '@/lib/ui/alert';
 import type { ClothingCategory } from '@/types';
 
 export default function ReviewAnalysisScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const params = useLocalSearchParams<{ imageUri?: string; analysisJson?: string }>();
   const addClothingItem = useAppStore((s) => s.addClothingItem);
-
-  const analysis = useMemo(() => {
-    if (!params.analysisJson) return null;
-    try {
-      return clothingAnalysisSchema.parse(JSON.parse(params.analysisJson));
-    } catch {
-      return null;
-    }
-  }, [params.analysisJson]);
+  const pending = useAppStore((s) => s.pendingClothingReview);
+  const setPendingClothingReview = useAppStore((s) => s.setPendingClothingReview);
+  const analysis = pending?.analysis ?? null;
 
   const [name, setName] = useState(analysis?.name_suggestion ?? '');
   const [category, setCategory] = useState<ClothingCategory>(
@@ -41,7 +34,7 @@ export default function ReviewAnalysisScreen() {
 
   const save = () => {
     if (!name.trim()) {
-      Alert.alert('Name required', 'Give this item a name before saving.');
+      showAlert('Name required', 'Give this item a name before saving.');
       return;
     }
     const item = addClothingItem({
@@ -57,12 +50,13 @@ export default function ReviewAnalysisScreen() {
       occasion_tags: analysis?.occasion_tags ?? [],
       warmth_score: analysis?.warmth_score ?? 3,
       formality_score: analysis?.formality_score ?? 2,
-      primary_image_url: params.imageUri || null,
+      primary_image_url: pending?.imageUri || null,
       ai_metadata: analysis ? { ...analysis } : {},
       ai_confidence: analysis?.confidence ?? {},
       needs_review_fields: uncertain,
       user_corrected_fields: analysis ? ['reviewed'] : [],
     });
+    setPendingClothingReview(null);
     router.replace(`/clothing/${item.id}`);
   };
 
@@ -105,7 +99,14 @@ export default function ReviewAnalysisScreen() {
 
           <View style={{ gap: 10, marginTop: 16 }}>
             <Button title="Save to closet" onPress={save} />
-            <Button title="Cancel" variant="ghost" onPress={() => router.back()} />
+            <Button
+              title="Cancel"
+              variant="ghost"
+              onPress={() => {
+                setPendingClothingReview(null);
+                router.back();
+              }}
+            />
           </View>
         </ScrollView>
       </SafeAreaView>

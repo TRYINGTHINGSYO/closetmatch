@@ -1,27 +1,25 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 import type { ReactNode } from 'react';
 
-// This file is web-only and used to configure the root HTML for every
-// web page during static rendering.
-// The contents of this function only run in Node.js environments and
-// do not have access to the DOM or browser APIs.
 export default function Root({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-
-        {/*
-          Disable body scrolling on web. This makes ScrollView components work closer to how they do on native.
-          However, body scrolling is often nice to have for mobile web. If you want to enable it, remove this line.
-        */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#5E7A70" />
+        <meta name="application-name" content="ClosetMatch" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta
+          name="description"
+          content="AI-powered personal closet, outfit recommendations, wardrobe history, laundry tracking, planning, and private Mirror Check."
+        />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <title>ClosetMatch — Your clothes. Your style.</title>
         <ScrollViewStyleReset />
-
-        {/* Using raw CSS styles as an escape-hatch to ensure the background color never flickers in dark-mode. */}
         <style dangerouslySetInnerHTML={{ __html: responsiveBackground }} />
-        {/* Add any additional <head> elements that you want globally available on web... */}
       </head>
       <body>{children}</body>
     </html>
@@ -29,11 +27,32 @@ export default function Root({ children }: { children: ReactNode }) {
 }
 
 const responsiveBackground = `
+html, body, #root {
+  min-height: 100%;
+}
 body {
-  background-color: #fff;
+  margin: 0;
+  background-color: #F3F5F4;
+  overscroll-behavior-y: none;
+}
+#root {
+  width: 100%;
+}
+@media (min-width: 1180px) {
+  #root {
+    max-width: 1180px;
+    margin: 0 auto;
+    box-shadow: 0 0 50px rgba(20, 32, 29, 0.08);
+  }
 }
 @media (prefers-color-scheme: dark) {
   body {
-    background-color: #000;
+    background-color: #111816;
   }
-}`;
+  @media (min-width: 1180px) {
+    #root {
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.3);
+    }
+  }
+}
+`;

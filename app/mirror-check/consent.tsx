@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, Text } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
@@ -10,6 +10,7 @@ import { useAppStore } from '@/stores/app-store';
 export default function MirrorCheckConsentScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { outfitId } = useLocalSearchParams<{ outfitId?: string }>();
   const enabled = useAppStore((s) => s.preferences?.mirror_check_enabled ?? true);
   const retention = useAppStore((s) => s.preferences?.mirror_photo_retention);
 
@@ -38,7 +39,12 @@ export default function MirrorCheckConsentScreen() {
           <Button
             title="I understand — continue"
             disabled={!enabled}
-            onPress={() => router.push('/mirror-check/capture')}
+            onPress={() =>
+              router.push({
+                pathname: '/mirror-check/capture',
+                params: outfitId ? { outfitId } : {},
+              })
+            }
             style={{ marginTop: 20 }}
           />
           <Button

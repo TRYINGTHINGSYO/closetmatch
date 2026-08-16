@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/useTheme';
 
 function TabIcon({ label, focused }: { label: string; focused: boolean }) {
@@ -26,6 +27,8 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
 
 export default function TabsLayout() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomPad = Math.max(insets.bottom, 8);
   return (
     <Tabs
       screenOptions={{
@@ -35,8 +38,8 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: theme.bgElevated,
           borderTopColor: theme.border,
-          height: 64,
-          paddingBottom: 8,
+          height: 52 + bottomPad,
+          paddingBottom: bottomPad,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
@@ -80,8 +83,6 @@ export default function TabsLayout() {
           tabBarIcon: ({ focused }) => <TabIcon label="Profile" focused={focused} />,
         }}
       />
-      {/* Hide leftover template route if present */}
-      <Tabs.Screen name="two" options={{ href: null }} />
     </Tabs>
   );
 }

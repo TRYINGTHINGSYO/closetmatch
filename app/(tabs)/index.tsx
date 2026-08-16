@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,7 +12,14 @@ import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
 import { createWeatherProvider } from '@/services/weather/provider';
+import { showAlert } from '@/lib/ui/alert';
 import type { WeatherSnapshot, OutfitCandidate } from '@/types';
+
+function sameItemSet(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const set = new Set(a);
+  return b.every((id) => set.has(id));
+}
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -20,6 +27,7 @@ export default function HomeScreen() {
   const profile = useAppStore((s) => s.profile);
   const preferences = useAppStore((s) => s.preferences);
   const clothingItems = useAppStore((s) => s.clothingItems);
+  const outfits = useAppStore((s) => s.outfits);
   const plannedOutfits = useAppStore((s) => s.plannedOutfits);
   const generateTodayRecommendations = useAppStore((s) => s.generateTodayRecommendations);
   const saveOutfit = useAppStore((s) => s.saveOutfit);
@@ -28,12 +36,16 @@ export default function HomeScreen() {
   const replaceRecommendationItem = useAppStore((s) => s.replaceRecommendationItem);
 
   const [weather, setWeather] = useState<WeatherSnapshot | null>(null);
-  const [mode, setMode] = useState('balanced');
+  const [mode, setMode] = useState<string>(preferences?.recommendation_mode ?? 'balanced');
   const [recs, setRecs] = useState<OutfitCandidate[]>([]);
   const dirtyCount = clothingItems.filter((c) =>
     ['dirty', 'in_laundry', 'drying'].includes(c.availability_status)
   ).length;
   const availableCount = clothingItems.filter((c) => c.availability_status === 'available').length;
+
+  const nextPlan = useMemo(() => {
+    return [...plannedOutfits].sort((a, b) => a.planned_date.localeCompare(b.planned_date))[0];
+  }, [plannedOutfits]);
 
   useEffect(() => {
     if (!preferences?.weather_enabled) return;
@@ -51,7 +63,16 @@ export default function HomeScreen() {
   const runRecommendations = (selectedMode = mode) => {
     const next = generateTodayRecommendations({
       mode: selectedMode,
-      occasion: selectedMode === 'work' ? 'Work' : selectedMode === 'date' ? 'Date' : 'Everyday',
+      occasion:
+        selectedMode === 'work'
+          ? 'Work'
+          : selectedMode === 'date'
+            ? 'Date'
+            : selectedMode === 'school'
+              ? 'School'
+              : selectedMode === 'formal'
+                ? 'Formal event'
+                : 'Everyday',
       temperature: weather?.temperature,
       feels_like: weather?.feels_like,
       rain_probability: weather?.rain_probability,
@@ -64,20 +85,23 @@ export default function HomeScreen() {
   useEffect(() => {
     if (clothingItems.length >= 2) runRecommendations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clothingItems.length, weather?.temperature]);
+  }, [clothingItems.length, weather?.temperature, mode]);
 
   const wearCandidate = (candidate: OutfitCandidate) => {
-    const outfit = saveOutfit({
-      name: `Worn ${new Date().toLocaleDateString()}`,
-      itemIds: candidate.items.map((i) => i.clothing_item.id),
-      roles: candidate.items.map((i) => i.role),
-      status: 'worn',
-    });
-    markOutfitWorn(outfit.id, { rating: 4 });
-    recordFeedback(
-      'accepted',
-      candidate.items.map((i) => i.clothing_item.id)
+    const itemIds = candidate.items.map((i) => i.clothing_item.id);
+    const existing = outfits.find((o) =>
+      sameItemSet(o.items?.map((i) => i.clothing_item_id) ?? [], itemIds)
     );
+    const outfit =
+      existing ??
+      saveOutfit({
+        name: `Worn ${new Date().toLocaleDateString()}`,
+        itemIds,
+        roles: candidate.items.map((i) => i.role),
+        status: 'worn',
+      });
+    markOutfitWorn(outfit.id, { rating: 4 });
+    recordFeedback('accepted', itemIds);
     runRecommendations();
   };
 
@@ -118,14 +142,17 @@ export default function HomeScreen() {
             </Pressable>
           ) : null}
 
-          {plannedOutfits[0] ? (
-            <View style={[styles.planned, { borderColor: theme.border }]}>
+          {nextPlan ? (
+            <Pressable
+              onPress={() => router.push('/outfits/planned')}
+              style={[styles.planned, { borderColor: theme.border }]}
+            >
               <Text style={{ ...typography.label, color: theme.ink }}>Planned outfit</Text>
               <Text style={{ ...typography.caption, color: theme.inkMuted }}>
-                {plannedOutfits[0].planned_date}
-                {plannedOutfits[0].occasion ? ` · ${plannedOutfits[0].occasion}` : ''}
+                {nextPlan.planned_date}
+                {nextPlan.occasion ? ` · ${nextPlan.occasion}` : ''}
               </Text>
-            </View>
+            </Pressable>
           ) : null}
 
           <Text style={[styles.section, { color: theme.ink }]}>What Should I Wear Today?</Text>
@@ -183,6 +210,7 @@ export default function HomeScreen() {
                     'accepted',
                     candidate.items.map((i) => i.clothing_item.id)
                   );
+                  showAlert('Saved', 'This look is in your outfits.');
                 }}
                 onReject={() => {
                   recordFeedback(
@@ -192,20 +220,28 @@ export default function HomeScreen() {
                   runRecommendations();
                 }}
                 onReplace={() => {
-                  const shoes = candidate.items.find((i) => i.role === 'shoes');
-                  const alt = clothingItems.find(
-                    (c) =>
-                      c.category === 'shoes' &&
-                      c.availability_status === 'available' &&
-                      c.id !== shoes?.clothing_item.id
-                  );
-                  if (shoes && alt) {
-                    const kept = candidate.items
-                      .filter((i) => i.role !== 'shoes')
-                      .map((i) => i.clothing_item.id);
-                    replaceRecommendationItem(kept, shoes.clothing_item.id, alt.id);
-                    runRecommendations();
+                  const roles = ['shoes', 'accessory', 'outerwear', 'top'] as const;
+                  for (const role of roles) {
+                    const slot = candidate.items.find((i) => i.role === role);
+                    if (!slot) continue;
+                    const alt = clothingItems.find(
+                      (c) =>
+                        c.availability_status === 'available' &&
+                        c.id !== slot.clothing_item.id &&
+                        (role === 'accessory'
+                          ? c.category === 'accessory'
+                          : c.category === role || (role === 'top' && c.category === 'top'))
+                    );
+                    if (alt) {
+                      const kept = candidate.items
+                        .filter((i) => i.clothing_item.id !== slot.clothing_item.id)
+                        .map((i) => i.clothing_item.id);
+                      replaceRecommendationItem(kept, slot.clothing_item.id, alt.id);
+                      runRecommendations();
+                      return;
+                    }
                   }
+                  showAlert('No swap available', 'Add another similar item to replace a piece in this look.');
                 }}
                 onMirrorCheck={() => router.push('/mirror-check/consent')}
               />

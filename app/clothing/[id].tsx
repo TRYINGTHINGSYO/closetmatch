@@ -1,4 +1,4 @@
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import { AVAILABILITY_LABELS } from '@/constants';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
+import { confirmAlert } from '@/lib/ui/alert';
 
 export default function ClothingDetailScreen() {
   const theme = useTheme();
@@ -39,11 +40,19 @@ export default function ClothingDetailScreen() {
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.content}>
           <Button title="Back" variant="ghost" onPress={() => router.back()} />
-          <View style={[styles.hero, { backgroundColor: theme.accentSoft }]}>
-            <Text style={[styles.heroLetter, { color: theme.accentDeep }]}>
-              {item.primary_color.slice(0, 1).toUpperCase()}
-            </Text>
-          </View>
+          {item.primary_image_url ? (
+            <Image
+              source={{ uri: item.primary_image_url }}
+              style={styles.heroImage}
+              accessibilityLabel={`${item.name} photo`}
+            />
+          ) : (
+            <View style={[styles.hero, { backgroundColor: theme.accentSoft }]}>
+              <Text style={[styles.heroLetter, { color: theme.accentDeep }]}>
+                {item.primary_color.slice(0, 1).toUpperCase()}
+              </Text>
+            </View>
+          )}
           <Text style={[styles.title, { color: theme.ink }]}>{item.name}</Text>
           <Text style={{ ...typography.body, color: theme.inkMuted }}>
             {item.primary_color} · {item.subcategory} · {AVAILABILITY_LABELS[item.availability_status]}
@@ -69,6 +78,11 @@ export default function ClothingDetailScreen() {
           )}
 
           <View style={styles.actions}>
+            <Button
+              title="Edit details"
+              variant="secondary"
+              onPress={() => router.push({ pathname: '/clothing/edit', params: { id: item.id } })}
+            />
             <Button
               title={item.favorite ? 'Unfavorite' : 'Favorite'}
               variant="secondary"
@@ -104,19 +118,16 @@ export default function ClothingDetailScreen() {
             <Button
               title="Delete"
               variant="danger"
-              onPress={() =>
-                Alert.alert('Delete item?', 'This removes the item from your closet.', [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                      deleteClothingItem(item.id);
-                      router.back();
-                    },
-                  },
-                ])
-              }
+              onPress={async () => {
+                const ok = await confirmAlert(
+                  'Delete item?',
+                  'This removes the item from your closet and saved outfits.',
+                  'Delete'
+                );
+                if (!ok) return;
+                deleteClothingItem(item.id);
+                router.back();
+              }}
             />
           </View>
         </ScrollView>
@@ -149,6 +160,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  heroImage: {
+    width: '100%',
+    height: 280,
+    borderRadius: 20,
+    backgroundColor: '#D7E0DC',
   },
   heroLetter: { fontFamily: 'Fraunces_600SemiBold', fontSize: 72 },
   title: { ...typography.hero },

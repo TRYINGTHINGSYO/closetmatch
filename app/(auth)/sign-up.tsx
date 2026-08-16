@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
 import { signUpSchema } from '@/lib/validation/forms';
+import { showAlert } from '@/lib/ui/alert';
 
 export default function SignUpScreen() {
   const theme = useTheme();
@@ -22,7 +23,7 @@ export default function SignUpScreen() {
   const onSubmit = async () => {
     const parsed = signUpSchema.safeParse({ email, password, displayName });
     if (!parsed.success) {
-      Alert.alert('Check your details', parsed.error.issues[0]?.message ?? 'Invalid input');
+      showAlert('Check your details', parsed.error.issues[0]?.message ?? 'Invalid input');
       return;
     }
     setLoading(true);
@@ -30,7 +31,7 @@ export default function SignUpScreen() {
       await signUp(email.trim(), password, displayName.trim());
       router.replace('/(onboarding)/profile');
     } catch (e) {
-      Alert.alert('Sign up failed', e instanceof Error ? e.message : 'Try again');
+      showAlert('Sign up failed', e instanceof Error ? e.message : 'Try again');
     } finally {
       setLoading(false);
     }

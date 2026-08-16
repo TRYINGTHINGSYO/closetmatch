@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +16,7 @@ export default function MirrorCheckResultScreen() {
   const respondToMirrorCheck = useAppStore((s) => s.respondToMirrorCheck);
   const deleteMirrorPhoto = useAppStore((s) => s.deleteMirrorPhoto);
   const markOutfitWorn = useAppStore((s) => s.markOutfitWorn);
+  const [agreed, setAgreed] = useState(false);
 
   if (!mirror) {
     return (
@@ -79,12 +81,20 @@ export default function MirrorCheckResultScreen() {
 
           <View style={{ gap: 10, marginTop: 16 }}>
             <Button
-              title="Looks good — I agree"
+              title={agreed ? 'Thanks — saved' : 'Looks good — I agree'}
+              disabled={agreed}
               onPress={() => {
                 respondToMirrorCheck(mirror.id, 'agree', 5);
-                if (mirror.outfit_id) markOutfitWorn(mirror.outfit_id, { rating: 5 });
+                setAgreed(true);
               }}
             />
+            {mirror.outfit_id ? (
+              <Button
+                title="I wore this outfit"
+                variant="secondary"
+                onPress={() => markOutfitWorn(mirror.outfit_id!, { rating: 5 })}
+              />
+            ) : null}
             <Button
               title="I disagree"
               variant="secondary"

@@ -1,4 +1,4 @@
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,7 +36,8 @@ export default function PlannedOutfitsScreen() {
             renderItem={({ item }) => {
               const outfit = outfits.find((o) => o.id === item.outfit_id);
               return (
-                <View
+                <Pressable
+                  onPress={() => outfit && router.push(`/outfits/${outfit.id}`)}
                   style={[
                     styles.card,
                     { backgroundColor: theme.bgElevated, borderColor: theme.border },
@@ -52,7 +53,7 @@ export default function PlannedOutfitsScreen() {
                   <Text style={{ ...typography.caption, color: theme.inkSoft, marginTop: 6 }}>
                     Reminder {item.reminder_enabled ? 'on' : 'off'} · Check forecast before leaving.
                   </Text>
-                </View>
+                </Pressable>
               );
             }}
           />

@@ -275,6 +275,7 @@ export const STARTER_OUTFIT_CATEGORIES = [
 ] as const;
 
 export const WEAR_TODAY_MODES = [
+  { id: 'balanced', label: 'Balanced variety' },
   { id: 'safe', label: 'Safe choice' },
   { id: 'surprise', label: 'Surprise me' },
   { id: 'something_new', label: 'Something new' },

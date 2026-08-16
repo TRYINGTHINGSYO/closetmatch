@@ -38,16 +38,35 @@ export default function OutfitsScreen() {
         </View>
         <View style={styles.tabs}>
           {(['saved', 'worn', 'favorites', 'planned'] as const).map((t) => (
-            <Chip key={t} label={t} selected={tab === t} onPress={() => setTab(t)} />
+            <Chip
+              key={t}
+              label={t === 'saved' ? 'Saved' : t === 'worn' ? 'Worn' : t === 'favorites' ? 'Favorites' : 'Planned'}
+              selected={tab === t}
+              onPress={() => setTab(t)}
+            />
           ))}
         </View>
 
         {list.length === 0 ? (
           <EmptyState
-            title="No outfit history yet"
-            message="Save a few combinations you already wear so ClosetMatch can learn your style."
-            actionLabel="Create outfit"
-            onAction={() => router.push('/outfits/builder')}
+            title={
+              tab === 'favorites'
+                ? 'No favorite outfits yet'
+                : tab === 'worn'
+                  ? 'Nothing worn yet'
+                  : tab === 'planned'
+                    ? 'No planned outfits'
+                    : 'No saved outfits yet'
+            }
+            message={
+              tab === 'planned'
+                ? 'Schedule a look from the builder or an outfit page.'
+                : 'Save a few combinations you already wear so ClosetMatch can learn your style.'
+            }
+            actionLabel={tab === 'planned' ? 'Open calendar' : 'Create outfit'}
+            onAction={() =>
+              router.push(tab === 'planned' ? '/outfits/planned' : '/outfits/builder')
+            }
           />
         ) : (
           <FlatList

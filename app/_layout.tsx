@@ -72,12 +72,15 @@ export default function RootLayout() {
     if (loaded) SplashScreen.hideAsync();
   }, [loaded]);
 
-  // Mark store hydrated if persist finishes after fonts
   useEffect(() => {
-    const t = setTimeout(() => {
-      useAppStore.setState({ hydrated: true });
-    }, 100);
-    return () => clearTimeout(t);
+    const finish = () => useAppStore.setState({ hydrated: true });
+    const unsub = useAppStore.persist.onFinishHydration(finish);
+    if (useAppStore.persist.hasHydrated()) finish();
+    const t = setTimeout(finish, 2000);
+    return () => {
+      if (typeof unsub === 'function') unsub();
+      clearTimeout(t);
+    };
   }, []);
 
   if (!loaded) return null;

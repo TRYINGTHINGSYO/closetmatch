@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,20 +11,21 @@ import { useAppStore } from '@/stores/app-store';
 export default function MirrorCheckProcessingScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { imageUri } = useLocalSearchParams<{ imageUri: string }>();
+  const { imageUri, outfitId } = useLocalSearchParams<{ imageUri: string; outfitId?: string }>();
   const runMirrorCheck = useAppStore((s) => s.runMirrorCheck);
-  const outfits = useAppStore((s) => s.outfits);
   const [error, setError] = useState<string | null>(null);
+  const started = useRef(false);
 
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
     let cancelled = false;
     (async () => {
       try {
-        const latestOutfit = outfits[0];
         const { mirror } = await runMirrorCheck({
           imageUri: imageUri || 'local://demo',
-          outfitId: latestOutfit?.id,
-          occasion: latestOutfit?.occasion ?? 'Everyday',
+          outfitId: outfitId || undefined,
+          occasion: 'Everyday',
         });
         if (!cancelled) {
           router.replace({
@@ -39,7 +40,7 @@ export default function MirrorCheckProcessingScreen() {
     return () => {
       cancelled = true;
     };
-  }, [imageUri]);
+  }, [imageUri, outfitId, router, runMirrorCheck]);
 
   return (
     <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={{ flex: 1 }}>

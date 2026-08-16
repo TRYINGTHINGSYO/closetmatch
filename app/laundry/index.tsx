@@ -52,7 +52,16 @@ export default function LaundryScreen() {
           ))}
         </View>
         {list.length === 0 ? (
-          <EmptyState title={`No ${AVAILABILITY_LABELS[tab].toLowerCase()} items`} message="" />
+          <EmptyState
+            title={`No ${AVAILABILITY_LABELS[tab].toLowerCase()} items`}
+            message={
+              tab === 'dirty'
+                ? 'Mark worn outfits or tap Dirty on an item to start a laundry pile.'
+                : tab === 'available'
+                  ? 'Everything is in laundry or archived right now.'
+                  : 'Move items here as they go through the wash.'
+            }
+          />
         ) : (
           <FlatList
             data={list}

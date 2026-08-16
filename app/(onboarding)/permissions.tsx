@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
+import { showAlert } from '@/lib/ui/alert';
 
 export default function OnboardingPermissionsScreen() {
   const theme = useTheme();
@@ -23,7 +24,7 @@ export default function OnboardingPermissionsScreen() {
       notifications_enabled: notifications,
     });
     if (loadSeed) loadDemoWardrobe();
-    Alert.alert(
+    showAlert(
       'Closet ready',
       loadSeed
         ? 'A sample wardrobe was loaded so you can explore recommendations immediately.'

@@ -36,7 +36,7 @@ export default function HistoryScreen() {
           <Text style={[styles.title, { color: theme.ink }]}>Wear history</Text>
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
             <Chip label="Timeline" selected={view === 'timeline'} onPress={() => setView('timeline')} />
-            <Chip label="Calendar" selected={view === 'calendar'} onPress={() => setView('calendar')} />
+            <Chip label="By date" selected={view === 'calendar'} onPress={() => setView('calendar')} />
           </View>
         </View>
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
 import { signInSchema } from '@/lib/validation/forms';
+import { showAlert } from '@/lib/ui/alert';
 
 export default function SignInScreen() {
   const theme = useTheme();
@@ -36,7 +37,7 @@ export default function SignInScreen() {
       await signIn(email.trim(), password);
       router.replace('/(tabs)');
     } catch (e) {
-      Alert.alert('Sign in failed', e instanceof Error ? e.message : 'Try again');
+      showAlert('Sign in failed', e instanceof Error ? e.message : 'Try again');
     } finally {
       setLoading(false);
     }

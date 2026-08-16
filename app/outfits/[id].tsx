@@ -53,7 +53,12 @@ export default function OutfitDetailScreen() {
             <Button
               title="Mirror Check"
               variant="secondary"
-              onPress={() => router.push('/mirror-check/consent')}
+              onPress={() =>
+                router.push({
+                  pathname: '/mirror-check/consent',
+                  params: { outfitId: outfit.id },
+                })
+              }
             />
             <Button
               title="Plan for tomorrow"
@@ -62,12 +67,20 @@ export default function OutfitDetailScreen() {
                 const d = new Date();
                 d.setDate(d.getDate() + 1);
                 planOutfit(outfit.id, d.toISOString().slice(0, 10), outfit.occasion ?? undefined);
+                router.push('/outfits/planned');
               }}
             />
             <Button
               title="Duplicate in builder"
               variant="ghost"
-              onPress={() => router.push('/outfits/builder')}
+              onPress={() =>
+                router.push({
+                  pathname: '/outfits/builder',
+                  params: {
+                    seedItemIds: outfit.items?.map((i) => i.clothing_item_id).join(',') ?? '',
+                  },
+                })
+              }
             />
           </View>
         </ScrollView>

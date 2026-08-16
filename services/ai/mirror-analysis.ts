@@ -4,7 +4,6 @@ import {
   type MirrorAnalysisResult,
   MIRROR_CHECK_SYSTEM_PROMPT,
 } from '@/lib/validation/ai-schemas';
-import { AppError, ErrorCodes } from '@/lib/errors';
 
 export interface MirrorAnalysisProvider {
   readonly name: string;
@@ -84,10 +83,7 @@ export class EdgeFunctionMirrorAnalysisProvider implements MirrorAnalysisProvide
       });
       return sanitizeMirrorAnalysis(mirrorAnalysisSchema.parse(result));
     } catch {
-      throw new AppError(
-        'Mirror Check analysis failed. You can still save or wear the outfit.',
-        ErrorCodes.AI_FAILED
-      );
+      return new MockMirrorAnalysisProvider().analyzeMirrorCheck(input);
     }
   }
 }

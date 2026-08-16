@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import { Alert, Image, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Image, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { showAlert } from '@/lib/ui/alert';
 
 export default function MirrorCheckCaptureScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { outfitId } = useLocalSearchParams<{ outfitId?: string }>();
   const [uri, setUri] = useState<string | null>(null);
 
   const pick = async (camera: boolean) => {
@@ -18,7 +20,7 @@ export default function MirrorCheckCaptureScreen() {
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission needed', 'Camera or photo access is required for Mirror Check.');
+      showAlert('Permission needed', 'Camera or photo access is required for Mirror Check.');
       return;
     }
     const result = camera
@@ -50,7 +52,7 @@ export default function MirrorCheckCaptureScreen() {
             onPress={() =>
               router.push({
                 pathname: '/mirror-check/processing',
-                params: { imageUri: uri ?? '' },
+                params: { imageUri: uri ?? '', outfitId: outfitId ?? '' },
               })
             }
           />

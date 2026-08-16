@@ -54,7 +54,13 @@
     "web": "expo start --web",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "web:export": "expo export --platform web",
+    "web:serve": "npx serve dist",
+    "deploy:web": "expo export --platform web && npx eas-cli@latest deploy --prod",
+    "build:android": "npx eas-cli@latest build --platform android --profile production",
+    "build:ios": "npx eas-cli@latest build --platform ios --profile production",
+    "build:all": "npx eas-cli@latest build --platform all --profile production"
   },
   "private": true
 }

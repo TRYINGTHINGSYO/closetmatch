@@ -18,7 +18,19 @@ export default function NotificationSettingsScreen() {
     }));
   };
 
-  if (!preferences) return null;
+  if (!preferences) {
+    return (
+      <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={{ flex: 1 }}>
+        <SafeAreaView style={{ flex: 1, padding: 20 }}>
+          <Button title="Back" variant="ghost" onPress={() => router.back()} />
+          <Text style={[styles.title, { color: theme.ink }]}>Notifications</Text>
+          <Text style={{ ...typography.body, color: theme.inkMuted }}>
+            Sign in to choose which reminders you want.
+          </Text>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={{ flex: 1 }}>

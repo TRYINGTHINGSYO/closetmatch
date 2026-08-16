@@ -108,6 +108,28 @@ function weatherCodeToLabel(code: number): string {
   return 'Unknown';
 }
 
+export async function geocodeLocation(
+  name: string
+): Promise<{ latitude: number; longitude: number; location_name: string } | null> {
+  const query = name.trim();
+  if (!query) return null;
+  try {
+    const res = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1`
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      results?: { name: string; admin1?: string; country?: string; latitude: number; longitude: number }[];
+    };
+    const match = data.results?.[0];
+    if (!match) return null;
+    const location_name = [match.name, match.admin1, match.country].filter(Boolean).join(', ');
+    return { latitude: match.latitude, longitude: match.longitude, location_name };
+  } catch {
+    return null;
+  }
+}
+
 export function createWeatherProvider(): WeatherProvider {
   if (process.env.EXPO_PUBLIC_WEATHER_PROVIDER === 'mock') {
     return new MockWeatherProvider();

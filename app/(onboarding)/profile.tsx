@@ -9,6 +9,7 @@ import { Chip } from '@/components/ui/Chip';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
+import { geocodeLocation } from '@/services/weather/provider';
 
 export default function OnboardingProfileScreen() {
   const theme = useTheme();
@@ -42,13 +43,16 @@ export default function OnboardingProfileScreen() {
         <View style={styles.footer}>
           <Button
             title="Continue"
-            onPress={() => {
+            onPress={async () => {
+              const geo = location.trim() ? await geocodeLocation(location) : null;
               useAppStore.setState((s) => ({
                 profile: s.profile
                   ? {
                       ...s.profile,
                       display_name: displayName || s.profile.display_name,
-                      location_name: location || null,
+                      location_name: geo?.location_name ?? (location || null),
+                      latitude: geo?.latitude ?? s.profile.latitude,
+                      longitude: geo?.longitude ?? s.profile.longitude,
                       preferred_temperature_unit: unit,
                     }
                   : s.profile,

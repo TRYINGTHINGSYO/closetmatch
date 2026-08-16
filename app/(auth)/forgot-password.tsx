@@ -1,4 +1,4 @@
-import { Alert, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import { TextField } from '@/components/ui/TextField';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useState } from 'react';
+import { showAlert } from '@/lib/ui/alert';
 
 export default function ForgotPasswordScreen() {
   const theme = useTheme();
@@ -31,7 +32,7 @@ export default function ForgotPasswordScreen() {
         <Button
           title="Send reset link"
           onPress={() =>
-            Alert.alert(
+            showAlert(
               'Demo mode',
               'Password reset requires Supabase Auth. Configure EXPO_PUBLIC_SUPABASE_URL to enable.'
             )

@@ -18,7 +18,19 @@ export default function PrivacySettingsScreen() {
     }));
   };
 
-  if (!preferences) return null;
+  if (!preferences) {
+    return (
+      <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={{ flex: 1 }}>
+        <SafeAreaView style={{ flex: 1, padding: 20 }}>
+          <Button title="Back" variant="ghost" onPress={() => router.back()} />
+          <Text style={[styles.title, { color: theme.ink }]}>Privacy</Text>
+          <Text style={{ ...typography.body, color: theme.inkMuted }}>
+            Sign in to manage privacy settings for this closet.
+          </Text>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={{ flex: 1 }}>

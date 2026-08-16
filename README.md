@@ -78,6 +78,29 @@ See `.env.example`.
 | `EXPO_PUBLIC_AI_PROVIDER` | `mock` or `openai` (via edge functions) |
 | `EXPO_PUBLIC_WEATHER_PROVIDER` | `open-meteo` or `mock` |
 
+## Build and deploy
+
+ClosetMatch is a universal Expo app: the same codebase targets web, Android, and iOS.
+
+```bash
+# browser development
+npm run web
+
+# production web export
+npm run web:export
+
+# connect to an Expo/EAS project once
+npx eas-cli@latest init
+
+# deploy web production
+npm run deploy:web
+
+# native production binaries
+npm run build:all
+```
+
+See [Production readiness](docs/PRODUCTION.md) for the remaining cloud/auth/AI/release work.
+
 ## Testing
 
 ```bash
@@ -93,6 +116,7 @@ npm test
 - [Mirror Check](docs/MIRROR_CHECK.md)
 - [Privacy](docs/PRIVACY.md)
 - [Roadmap](docs/ROADMAP.md)
+- [Production readiness](docs/PRODUCTION.md)
 
 ## Privacy notes
 

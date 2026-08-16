@@ -1,4 +1,4 @@
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,7 +33,10 @@ export default function MirrorCheckHistoryScreen() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ padding: 16, gap: 10 }}
             renderItem={({ item }) => (
-              <View
+              <Pressable
+                onPress={() =>
+                  router.push({ pathname: '/mirror-check/result', params: { id: item.id } })
+                }
                 style={[styles.card, { backgroundColor: theme.bgElevated, borderColor: theme.border }]}
               >
                 <Text style={{ ...typography.label, color: theme.ink }}>
@@ -44,7 +47,7 @@ export default function MirrorCheckHistoryScreen() {
                   {item.user_agreement ?? 'no response'} · Photo{' '}
                   {item.photo_deleted_at ? 'deleted' : 'retained'}
                 </Text>
-              </View>
+              </Pressable>
             )}
           />
         )}

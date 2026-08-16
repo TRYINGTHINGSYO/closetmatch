@@ -1,20 +1,25 @@
-import { Link, Stack } from 'expo-router';
-import { StyleSheet } from 'react-native';
-
-import { Text, View } from '@/components/Themed';
+import { StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Button } from '@/components/ui/Button';
+import { typography } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function NotFoundScreen() {
-  return (
-    <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
-      <View style={styles.container}>
-        <Text style={styles.title}>This screen doesn't exist.</Text>
+  const theme = useTheme();
+  const router = useRouter();
 
-        <Link href="/" style={styles.link}>
-          <Text style={styles.linkText}>Go to home screen!</Text>
-        </Link>
-      </View>
-    </>
+  return (
+    <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={{ flex: 1 }}>
+      <SafeAreaView style={styles.container}>
+        <Text style={[styles.title, { color: theme.ink }]}>This screen doesn’t exist</Text>
+        <Text style={[styles.body, { color: theme.inkMuted }]}>
+          The link may be outdated. Head back to ClosetMatch and keep getting dressed.
+        </Text>
+        <Button title="Go home" onPress={() => router.replace('/(tabs)')} style={{ marginTop: 20 }} />
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
@@ -23,18 +28,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    padding: 24,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
-  },
-  linkText: {
-    fontSize: 14,
-    color: '#2e78b7',
-  },
+  title: { ...typography.hero, textAlign: 'center' },
+  body: { ...typography.body, textAlign: 'center', marginTop: 8, maxWidth: 360 },
 });

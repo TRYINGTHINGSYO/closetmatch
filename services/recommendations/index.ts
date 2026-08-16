@@ -90,6 +90,10 @@ export function generateRecommendations(input: RecommendationEngineInput): Outfi
     scored.sort(
       (a, b) => b.score_breakdown.personal_pairing - a.score_breakdown.personal_pairing
     );
+  } else if (mode === 'experimental' || mode === 'max_variety') {
+    scored.sort(
+      (a, b) => b.score_breakdown.variety_recent_wear - a.score_breakdown.variety_recent_wear
+    );
   }
 
   return diversifyCandidates(scored, limit);

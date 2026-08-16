@@ -7,6 +7,7 @@ export default function SettingsLayout() {
       <Stack.Screen name="notifications" />
       <Stack.Screen name="weather" />
       <Stack.Screen name="export" />
+      <Stack.Screen name="system-status" />
     </Stack>
   );
 }

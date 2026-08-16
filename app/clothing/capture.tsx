@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,12 +8,14 @@ import { Button } from '@/components/ui/Button';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
+import { showAlert } from '@/lib/ui/alert';
 import type { ClothingAnalysisResult } from '@/lib/validation/ai-schemas';
 
 export default function ClothingCaptureScreen() {
   const theme = useTheme();
   const router = useRouter();
   const analyzeClothing = useAppStore((s) => s.analyzeClothing);
+  const setPendingClothingReview = useAppStore((s) => s.setPendingClothingReview);
   const [uri, setUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [skipAi, setSkipAi] = useState(false);
@@ -23,7 +25,7 @@ export default function ClothingCaptureScreen() {
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
+      showAlert(
         fromCamera ? 'Camera permission needed' : 'Photo permission needed',
         'Enable access in settings, or continue by entering details manually.'
       );
@@ -41,9 +43,14 @@ export default function ClothingCaptureScreen() {
     }
   };
 
+  const goToReview = (imageUri: string, analysis: ClothingAnalysisResult | null) => {
+    setPendingClothingReview({ imageUri, analysis });
+    router.push('/clothing/review-analysis');
+  };
+
   const continueFlow = async () => {
     if (!uri && !skipAi) {
-      Alert.alert('Add a photo', 'Take or upload a clothing photo, or skip AI and enter details.');
+      showAlert('Add a photo', 'Take or upload a clothing photo, or skip AI and enter details.');
       return;
     }
     setLoading(true);
@@ -52,30 +59,15 @@ export default function ClothingCaptureScreen() {
       if (uri && !skipAi) {
         analysis = await analyzeClothing(uri);
       }
-      router.push({
-        pathname: '/clothing/review-analysis',
-        params: {
-          imageUri: uri ?? '',
-          analysisJson: analysis ? JSON.stringify(analysis) : '',
-        },
-      });
+      goToReview(uri ?? '', analysis);
     } catch (e) {
-      Alert.alert(
+      showAlert(
         'Analysis unavailable',
         e instanceof Error
           ? `${e.message} You can still enter details manually.`
-          : 'Continue manually.',
-        [
-          {
-            text: 'Enter manually',
-            onPress: () =>
-              router.push({
-                pathname: '/clothing/review-analysis',
-                params: { imageUri: uri ?? '', analysisJson: '' },
-              }),
-          },
-        ]
+          : 'Continue manually.'
       );
+      goToReview(uri ?? '', null);
     } finally {
       setLoading(false);
     }
@@ -112,11 +104,7 @@ export default function ClothingCaptureScreen() {
               variant="ghost"
               onPress={() => setSkipAi((v) => !v)}
             />
-            <Button
-              title="Continue"
-              loading={loading}
-              onPress={continueFlow}
-            />
+            <Button title="Continue" loading={loading} onPress={continueFlow} />
           </View>
         </ScrollView>
       </SafeAreaView>
