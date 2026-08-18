@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { APP_NAME } from '@/constants';
-import { typography } from '@/constants/theme';
+import { radii, typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useWebLayout } from '@/hooks/useWebLayout';
 import { useAppStore } from '@/stores/app-store';
@@ -10,7 +10,6 @@ const APP_LINKS = [
   { label: 'Today', href: '/', prefixes: ['/', '/(tabs)'] },
   { label: 'Closet', href: '/closet', prefixes: ['/closet'] },
   { label: 'Outfits', href: '/outfits', prefixes: ['/outfits'] },
-  { label: 'Add', href: '/add', prefixes: ['/add', '/clothing'] },
   { label: 'Laundry', href: '/laundry', prefixes: ['/laundry'] },
   { label: 'Mirror Check', href: '/mirror-check/consent', prefixes: ['/mirror-check'] },
   { label: 'You', href: '/profile', prefixes: ['/profile', '/settings', '/history'] },
@@ -32,6 +31,7 @@ export function SiteHeader() {
   const sessionEmail = useAppStore((s) => s.sessionEmail);
   const onboarded = useAppStore((s) => s.profile?.onboarding_completed);
   const signedIn = Boolean(sessionEmail && onboarded);
+  const addActive = linkActive(pathname, ['/add', '/clothing']);
 
   return (
     <View
@@ -51,27 +51,48 @@ export function SiteHeader() {
         <Text style={[styles.brand, { color: theme.ink }]}>{APP_NAME}</Text>
       </Pressable>
       {signedIn ? (
-        <View style={styles.links}>
-          {APP_LINKS.map((link) => {
-            const active = linkActive(pathname, link.prefixes);
-            return (
-              <Pressable
-                key={link.href}
-                onPress={() => router.push(link.href)}
-                accessibilityRole="link"
-                accessibilityState={{ selected: active }}
-              >
-                <Text
-                  style={{
-                    ...typography.label,
-                    color: active ? theme.accent : theme.inkMuted,
-                  }}
+        <View style={styles.navCluster}>
+          <View style={styles.links}>
+            {APP_LINKS.map((link) => {
+              const active = linkActive(pathname, link.prefixes);
+              return (
+                <Pressable
+                  key={link.href}
+                  onPress={() => router.push(link.href)}
+                  accessibilityRole="link"
+                  accessibilityState={{ selected: active }}
+                  style={[
+                    styles.link,
+                    active && { borderBottomColor: theme.accent },
+                  ]}
                 >
-                  {link.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+                  <Text
+                    style={{
+                      ...typography.label,
+                      color: active ? theme.ink : theme.inkMuted,
+                    }}
+                  >
+                    {link.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Pressable
+            onPress={() => router.push('/add')}
+            accessibilityRole="button"
+            accessibilityLabel="Add clothes"
+            accessibilityState={{ selected: addActive }}
+            style={({ pressed }) => [
+              styles.add,
+              {
+                backgroundColor: addActive ? theme.accentDeep : theme.accent,
+                opacity: pressed ? 0.88 : 1,
+              },
+            ]}
+          >
+            <Text style={styles.addLabel}>Add</Text>
+          </Pressable>
         </View>
       ) : sessionEmail ? (
         <Text style={{ ...typography.caption, color: theme.inkMuted }}>Finishing setup</Text>
@@ -106,5 +127,31 @@ const styles = StyleSheet.create({
     fontFamily: 'Fraunces_600SemiBold',
     fontSize: 20,
   },
-  links: { flexDirection: 'row', alignItems: 'center', gap: 18, flexWrap: 'wrap' },
+  navCluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 22,
+    flexWrap: 'wrap',
+    flexGrow: 1,
+    justifyContent: 'flex-end',
+  },
+  links: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
+  link: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  add: {
+    minHeight: 40,
+    paddingHorizontal: 16,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addLabel: {
+    ...typography.label,
+    fontFamily: 'DMSans_700Bold',
+    color: '#FFFFFF',
+  },
 });

@@ -1,10 +1,10 @@
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AVAILABILITY_LABELS } from '@/constants';
 import { radii, typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import type { ClothingItem } from '@/types';
+import { GarmentVisual } from '@/components/outfit/GarmentVisual';
 
 export function ClothingCard({
   item,
@@ -26,20 +26,7 @@ export function ClothingCard({
       style={[styles.card, { backgroundColor: theme.bgElevated, borderColor: theme.border }]}
     >
       <View style={[styles.imageWrap, compact && styles.imageCompact]}>
-        {item.primary_image_url ? (
-          <Image source={{ uri: item.primary_image_url }} style={styles.image} />
-        ) : (
-          <LinearGradient
-            colors={[theme.heroGlow, theme.accentSoft]}
-            style={styles.image}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Text style={[styles.placeholder, { color: theme.accentDeep }]}>
-              {item.primary_color.slice(0, 1).toUpperCase()}
-            </Text>
-          </LinearGradient>
-        )}
+        <GarmentVisual item={item} />
         {item.favorite ? (
           <View style={[styles.badge, { backgroundColor: theme.accent }]}>
             <Text style={styles.badgeText}>★</Text>
@@ -83,16 +70,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   imageCompact: { height: 100 },
-  image: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  placeholder: {
-    fontFamily: 'Fraunces_600SemiBold',
-    fontSize: 36,
-  },
   badge: {
     position: 'absolute',
     top: 8,

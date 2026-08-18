@@ -34,14 +34,12 @@ export function Button({
       : variant === 'danger'
         ? theme.danger
         : variant === 'secondary'
-          ? theme.accentSoft
+          ? theme.bgElevated
           : 'transparent';
   const color =
-    variant === 'primary' || variant === 'danger'
-      ? '#FFFFFF'
-      : variant === 'secondary'
-        ? theme.accentDeep
-        : theme.ink;
+    variant === 'primary' || variant === 'danger' ? '#FFFFFF' : theme.ink;
+  const borderColor =
+    variant === 'primary' || variant === 'danger' ? bg : theme.border;
 
   return (
     <Pressable
@@ -52,7 +50,7 @@ export function Button({
         styles.base,
         {
           backgroundColor: bg,
-          borderColor: variant === 'ghost' ? theme.border : bg,
+          borderColor,
           opacity: disabled ? 0.5 : pressed ? 0.88 : 1,
         },
         style,

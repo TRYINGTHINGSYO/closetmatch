@@ -34,12 +34,13 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const inAuth = segments[0] === '(auth)';
     const inOnboarding = segments[0] === '(onboarding)';
     const inLook = segments[0] === 'look';
+    const inDevPreview = __DEV__ && segments[0] === 'dev';
 
-    if (!sessionEmail && !inAuth && !inLook) {
+    if (!sessionEmail && !inAuth && !inLook && !inDevPreview) {
       router.replace('/(auth)/welcome');
       return;
     }
-    if (sessionEmail && profile && !profile.onboarding_completed && !inOnboarding) {
+    if (sessionEmail && profile && !profile.onboarding_completed && !inOnboarding && !inDevPreview) {
       router.replace('/(onboarding)/profile');
       return;
     }
@@ -110,6 +111,7 @@ export default function RootLayout() {
               <Stack.Screen name="(onboarding)" />
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="look" options={{ headerShown: false }} />
+              <Stack.Screen name="dev" options={{ headerShown: false }} />
               <Stack.Screen name="clothing" options={{ headerShown: false }} />
               <Stack.Screen name="outfits" options={{ headerShown: false }} />
               <Stack.Screen name="mirror-check" options={{ headerShown: false }} />

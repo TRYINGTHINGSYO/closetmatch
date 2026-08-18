@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  Image,
   PanResponder,
   Platform,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { GarmentVisual } from '@/components/outfit/GarmentVisual';
 import { radii, typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import type { ClothingItem } from '@/types';
@@ -172,15 +171,9 @@ function SwipeCard({
         Platform.OS === 'web' ? ({ cursor: 'pointer' } as const) : null,
       ]}
     >
-      {item.primary_image_url ? (
-        <Image source={{ uri: item.primary_image_url }} style={styles.photo} />
-      ) : (
-        <LinearGradient colors={[theme.heroGlow, theme.accentSoft]} style={styles.photo}>
-          <Text style={[styles.letter, { color: theme.accentDeep }]}>
-            {item.primary_color.slice(0, 1).toUpperCase()}
-          </Text>
-        </LinearGradient>
-      )}
+      <View style={styles.photo}>
+        <GarmentVisual item={item} />
+      </View>
       <View style={styles.meta}>
         <Text style={{ ...typography.title, color: theme.ink }}>{item.name}</Text>
         <Text style={{ ...typography.body, color: theme.inkMuted, textTransform: 'capitalize' }}>
@@ -224,10 +217,7 @@ const styles = StyleSheet.create({
   photo: {
     flex: 1,
     width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
-  letter: { fontFamily: 'Fraunces_600SemiBold', fontSize: 72 },
   meta: { padding: 16, gap: 4 },
   actions: { flexDirection: 'row', gap: 8 },
   btn: { flex: 1 },

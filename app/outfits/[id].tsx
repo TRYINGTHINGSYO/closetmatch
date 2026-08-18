@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/Button';
+import { OutfitCollage } from '@/components/outfit/OutfitCollage';
 import { typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAppStore } from '@/stores/app-store';
@@ -30,6 +31,16 @@ export default function OutfitDetailScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           <Button title="Back" variant="ghost" onPress={() => router.back()} />
           <Text style={[styles.title, { color: theme.ink }]}>{outfit.name}</Text>
+          <OutfitCollage
+            pieces={(outfit.items ?? [])
+              .filter((piece) => piece.clothing_item)
+              .map((piece) => ({
+                id: piece.id,
+                role: piece.role,
+                clothing_item: piece.clothing_item!,
+              }))}
+            size="hero"
+          />
           <Text style={{ ...typography.body, color: theme.inkMuted }}>
             {outfit.occasion ?? 'Everyday'} · Worn {outfit.times_worn}×
             {outfit.rating ? ` · Rated ${outfit.rating}` : ''}

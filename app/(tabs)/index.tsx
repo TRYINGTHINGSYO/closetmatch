@@ -3,25 +3,38 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
 import { RecommendationCard } from '@/components/recommendations/RecommendationCard';
-import { ReadyOutfitCard } from '@/components/recommendations/ReadyOutfitCard';
+import { ReadyOutfitRow } from '@/components/recommendations/ReadyOutfitCard';
+import { TodayPick } from '@/components/recommendations/TodayPick';
 import { ClothingSwipeDeck } from '@/components/wear/ClothingSwipeDeck';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Chip } from '@/components/ui/Chip';
 import { ScreenShell } from '@/components/layout/ScreenShell';
-import { WEAR_TODAY_MODES } from '@/constants';
+import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { SelectMenu } from '@/components/ui/SelectMenu';
 import { typography } from '@/constants/theme';
-import { useTheme } from '@/hooks/useTheme';
+import { useIsDarkTheme, useTheme } from '@/hooks/useTheme';
 import { useWebLayout } from '@/hooks/useWebLayout';
 import { useAppStore } from '@/stores/app-store';
 import { createWeatherProvider } from '@/services/weather/provider';
 import { showAlert } from '@/lib/ui/alert';
 import { sameIdSet, shuffled } from '@/lib/array';
+import { timeOfDayGreeting } from '@/lib/datetime/greeting';
+import { getWeatherAtmosphere } from '@/lib/weather/atmosphere';
+import { formatWeatherLine } from '@/lib/weather/format';
+import { outfitDisplayName } from '@/lib/outfits/display-name';
+import {
+  hydrateTodayFilters,
+  resolveTodayEngineContext,
+  TODAY_MOODS,
+  TODAY_OCCASIONS,
+  TODAY_PRIORITIES,
+} from '@/lib/wear/today-filters';
 import type { WeatherSnapshot, OutfitCandidate, ClothingItem } from '@/types';
 
 export default function HomeScreen() {
   const theme = useTheme();
+  const isDark = useIsDarkTheme();
   const router = useRouter();
-  const { wide, isWeb } = useWebLayout();
+  const { isWeb, compact } = useWebLayout();
   const profile = useAppStore((s) => s.profile);
   const preferences = useAppStore((s) => s.preferences);
   const clothingItems = useAppStore((s) => s.clothingItems);
@@ -35,7 +48,10 @@ export default function HomeScreen() {
   const updateClothingItem = useAppStore((s) => s.updateClothingItem);
 
   const [weather, setWeather] = useState<WeatherSnapshot | null>(null);
-  const [mode, setMode] = useState<string>(preferences?.recommendation_mode ?? 'balanced');
+  const initialFilters = hydrateTodayFilters(preferences?.recommendation_mode);
+  const [moodId, setMoodId] = useState(initialFilters.moodId);
+  const [priorityId, setPriorityId] = useState(initialFilters.priorityId);
+  const [occasionId, setOccasionId] = useState(initialFilters.occasionId);
   const [recs, setRecs] = useState<OutfitCandidate[]>([]);
   const [wearMode, setWearMode] = useState<'outfits' | 'swipe'>('outfits');
   const [todayLook, setTodayLook] = useState<ClothingItem[]>([]);
@@ -70,19 +86,33 @@ export default function HomeScreen() {
       .catch(() => setWeather(null));
   }, [preferences?.weather_enabled, profile]);
 
-  const runRecommendations = (selectedMode = mode) => {
+  const greeting = timeOfDayGreeting(new Date(), profile?.timezone);
+  const weatherLine = weather ? formatWeatherLine(weather) : null;
+  const clothingHint = weather ? getWeatherAtmosphere(weather, isDark).clothingHint : null;
+  const engine = resolveTodayEngineContext({ moodId, priorityId, occasionId });
+  const heroRec = recs[0];
+  const freshRecs = recs.slice(1);
+
+  const recMeta = {
+    occasion: engine.occasion,
+    feelsLike: weather?.feels_like,
+    temperatureUnit: weather?.unit ?? profile?.preferred_temperature_unit,
+    weatherCondition: weather?.condition,
+  };
+
+  const runRecommendations = (
+    nextMood = moodId,
+    nextPriority = priorityId,
+    nextOccasion = occasionId
+  ) => {
+    const { mode, occasion } = resolveTodayEngineContext({
+      moodId: nextMood,
+      priorityId: nextPriority,
+      occasionId: nextOccasion,
+    });
     const next = generateTodayRecommendations({
-      mode: selectedMode,
-      occasion:
-        selectedMode === 'work'
-          ? 'Work'
-          : selectedMode === 'date'
-            ? 'Date'
-            : selectedMode === 'school'
-              ? 'School'
-              : selectedMode === 'formal'
-                ? 'Formal event'
-                : 'Everyday',
+      mode,
+      occasion,
       temperature: weather?.temperature,
       feels_like: weather?.feels_like,
       rain_probability: weather?.rain_probability,
@@ -95,7 +125,7 @@ export default function HomeScreen() {
   useEffect(() => {
     if (clothingItems.length >= 2) runRecommendations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clothingItems.length, weather?.temperature, mode]);
+  }, [clothingItems.length, weather?.temperature, moodId, priorityId, occasionId]);
 
   const wearCandidate = (candidate: OutfitCandidate) => {
     const itemIds = candidate.items.map((i) => i.clothing_item.id);
@@ -120,6 +150,26 @@ export default function HomeScreen() {
     showAlert('Worn', 'Logged for today. Laundry will update shirts and similar pieces.');
   };
 
+  const saveCandidate = (candidate: OutfitCandidate) => {
+    const items = candidate.items.map((slot) => slot.clothing_item);
+    saveOutfit({
+      name: outfitDisplayName({
+        items,
+        occasion: engine.occasion,
+        feelsLike: weather?.feels_like,
+        temperatureUnit: weather?.unit,
+        weatherCondition: weather?.condition,
+      }),
+      itemIds: items.map((item) => item.id),
+      roles: candidate.items.map((slot) => slot.role),
+    });
+    recordFeedback(
+      'accepted',
+      items.map((item) => item.id)
+    );
+    showAlert('Saved', 'This look is in your outfits.');
+  };
+
   const wearTodayLook = () => {
     if (todayLook.length < 2) {
       showAlert('Add another piece', 'Pick at least two items from the swipe deck to wear together.');
@@ -140,181 +190,196 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScreenShell scroll>
-      <View style={[styles.heroRow, wide && styles.heroWide]}>
-        <View style={{ flex: 1, gap: 6 }}>
-          {!isWeb ? <Text style={[styles.brand, { color: theme.ink }]}>ClosetMatch</Text> : null}
-          <Text style={[styles.hello, { color: theme.ink }]}>
-            Hi {profile?.display_name || 'there'} — what should you wear today?
-          </Text>
-          <Text style={{ ...typography.body, color: theme.inkMuted }}>
-            Start with looks you already saved, or swipe through every available piece.
-          </Text>
-        </View>
-        {weather ? (
-          <View style={[styles.weather, { backgroundColor: theme.bgElevated, borderColor: theme.border }]}>
-            <Text style={[styles.weatherTemp, { color: theme.ink }]}>
-              {Math.round(weather.feels_like)}°{weather.unit.toUpperCase()}
-            </Text>
-            <Text style={{ ...typography.caption, color: theme.inkMuted }}>
-              {weather.condition} · {weather.location_name}
-            </Text>
-          </View>
+    <ScreenShell scroll weather={weather}>
+      <View style={[styles.hero, compact && styles.heroCompact]}>
+        {!isWeb ? (
+          <Text style={[styles.brand, { color: theme.ink }]}>ClosetMatch</Text>
         ) : null}
-      </View>
-
-      <View style={styles.quickLinks}>
-        {dirtyCount > 0 ? (
-          <Pressable
-            onPress={() => router.push('/laundry')}
-            style={[styles.warn, { backgroundColor: theme.accentSoft }]}
-          >
-            <Text style={{ color: theme.accentDeep, ...typography.label }}>{dirtyCount} in laundry</Text>
-          </Pressable>
+        <Text style={[styles.greeting, { color: theme.inkMuted }]}>{greeting}</Text>
+        <Text style={[styles.headline, compact && styles.headlineCompact, { color: theme.ink }]} accessibilityRole="header">
+          Here’s what works today
+        </Text>
+        {weatherLine ? (
+          <Text style={[styles.weatherLine, { color: theme.inkMuted }]}>{weatherLine}</Text>
         ) : null}
-        {nextPlan ? (
-          <Pressable
-            onPress={() => router.push('/outfits/planned')}
-            style={[styles.planned, { borderColor: theme.border }]}
-          >
-            <Text style={{ ...typography.label, color: theme.ink }}>Planned {nextPlan.planned_date}</Text>
-          </Pressable>
+        {clothingHint && !compact ? (
+          <Text style={[styles.hint, { color: theme.inkSoft }]}>{clothingHint}</Text>
         ) : null}
-        <Pressable
-          onPress={() => router.push('/clothing/capture')}
-          style={[styles.planned, { borderColor: theme.border }]}
-        >
-          <Text style={{ ...typography.label, color: theme.ink }}>Add clothes</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => router.push('/mirror-check/consent')}
-          style={[styles.planned, { borderColor: theme.border }]}
-        >
-          <Text style={{ ...typography.label, color: theme.ink }}>Mirror Check</Text>
-        </Pressable>
-      </View>
-
-      <Text style={[styles.section, { color: theme.ink }]}>What should I wear today?</Text>
-      <View style={styles.modeRow}>
-        <Chip label="Ready outfits" selected={wearMode === 'outfits'} onPress={() => setWearMode('outfits')} />
-        <Chip label="Swipe clothes" selected={wearMode === 'swipe'} onPress={() => setWearMode('swipe')} />
       </View>
 
       {wearMode === 'outfits' ? (
-        <>
-          <View style={styles.chipWrap}>
-            {WEAR_TODAY_MODES.slice(0, 8).map((m) => (
-              <Chip
-                key={m.id}
-                label={m.label}
-                selected={mode === m.id}
-                onPress={() => {
-                  setMode(m.id);
-                  runRecommendations(m.id);
-                }}
-              />
-            ))}
-          </View>
-          <View style={styles.quick}>
-            <Button title="Refresh ideas" onPress={() => runRecommendations()} style={{ flex: 1 }} />
-            <Button
-              title="Build an outfit"
-              variant="secondary"
-              onPress={() => router.push('/outfits/builder')}
-              style={{ flex: 1 }}
+        <View style={[styles.filters, compact && styles.filtersStack]}>
+          <View style={[styles.moodWrap, compact && styles.moodWrapFull]}>
+            <SegmentedControl
+              accessibilityLabel="Mood"
+              options={TODAY_MOODS}
+              value={moodId}
+              onChange={(id) => {
+                setMoodId(id);
+                runRecommendations(id, priorityId, occasionId);
+              }}
             />
           </View>
+          <View style={[styles.selectRow, compact && styles.selectRowCompact]}>
+          <SelectMenu
+            label="Occasion"
+            value={occasionId}
+            options={TODAY_OCCASIONS}
+            onChange={(id) => {
+              setOccasionId(id);
+              runRecommendations(moodId, priorityId, id);
+            }}
+          />
+          <SelectMenu
+            label="Priority"
+            value={priorityId}
+            options={TODAY_PRIORITIES}
+            onChange={(id) => {
+              setPriorityId(id);
+              runRecommendations(moodId, id, occasionId);
+            }}
+          />
+          </View>
+        </View>
+      ) : null}
 
-          {readyOutfits.length > 0 ? (
-            <>
-              <Text style={[styles.subhead, { color: theme.ink }]}>Looks you already have</Text>
-              <View style={styles.outfitGrid}>
-                {readyOutfits.slice(0, 6).map((outfit) => (
-                  <ReadyOutfitCard
-                    key={outfit.id}
-                    outfit={outfit}
-                    onOpen={() => router.push(`/outfits/${outfit.id}`)}
-                    onWear={() => wearSaved(outfit.id)}
-                  />
-                ))}
-              </View>
-            </>
+      {dirtyCount > 0 || nextPlan || !isWeb ? (
+        <View style={styles.quietRow}>
+          {dirtyCount > 0 ? (
+            <Pressable onPress={() => router.push('/laundry')} accessibilityRole="link">
+              <Text style={[styles.quietLink, { color: theme.inkMuted }]}>{dirtyCount} in laundry</Text>
+            </Pressable>
           ) : null}
+          {nextPlan ? (
+            <Pressable onPress={() => router.push('/outfits/planned')} accessibilityRole="link">
+              <Text style={[styles.quietLink, { color: theme.inkMuted }]}>Planned {nextPlan.planned_date}</Text>
+            </Pressable>
+          ) : null}
+          {!isWeb ? (
+            <Pressable onPress={() => router.push('/mirror-check/consent')} accessibilityRole="link">
+              <Text style={[styles.quietLink, { color: theme.inkMuted }]}>Mirror Check</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
 
-          <Text style={[styles.subhead, { color: theme.ink }]}>Fresh suggestions</Text>
-          {available.length < 2 ? (
+      {wearMode === 'outfits' ? (
+        <>
+          {heroRec ? (
+            <TodayPick
+              candidate={heroRec}
+              {...recMeta}
+              onWear={() => wearCandidate(heroRec)}
+              onSave={() => saveCandidate(heroRec)}
+              onDetails={() =>
+                router.push({
+                  pathname: '/outfits/builder',
+                  params: {
+                    seedItemIds: heroRec.items.map((slot) => slot.clothing_item.id).join(','),
+                  },
+                })
+              }
+            />
+          ) : available.length < 2 ? (
             <EmptyState
               title="Add a few clothes first"
               message="Photograph pieces you actually own. ClosetMatch will build outfits from them."
               actionLabel="Add clothing"
               onAction={() => router.push('/clothing/capture')}
             />
-          ) : recs.length === 0 ? (
+          ) : (
             <EmptyState
               title="No suggestions right now"
               message="Several items may be in laundry, or your closet needs more variety."
               actionLabel="Open laundry"
               onAction={() => router.push('/laundry')}
             />
-          ) : (
-            <View style={styles.recGrid}>
-              {recs.map((candidate, index) => (
-                <RecommendationCard
-                  key={`${candidate.template_id}-${index}`}
-                  candidate={candidate}
-                  index={index}
-                  onWear={() => wearCandidate(candidate)}
-                  onSave={() => {
-                    saveOutfit({
-                      name: `Saved look ${index + 1}`,
-                      itemIds: candidate.items.map((i) => i.clothing_item.id),
-                      roles: candidate.items.map((i) => i.role),
-                    });
-                    recordFeedback(
-                      'accepted',
-                      candidate.items.map((i) => i.clothing_item.id)
-                    );
-                    showAlert('Saved', 'This look is in your outfits.');
-                  }}
-                  onReject={() => {
-                    recordFeedback(
-                      'rejected',
-                      candidate.items.map((i) => i.clothing_item.id)
-                    );
-                    runRecommendations();
-                  }}
-                  onReplace={() => {
-                    const roles = ['shoes', 'accessory', 'outerwear', 'top'] as const;
-                    for (const role of roles) {
-                      const slot = candidate.items.find((i) => i.role === role);
-                      if (!slot) continue;
-                      const alt = clothingItems.find(
-                        (c) =>
-                          c.availability_status === 'available' &&
-                          c.id !== slot.clothing_item.id &&
-                          (role === 'accessory'
-                            ? c.category === 'accessory'
-                            : c.category === role || (role === 'top' && c.category === 'top'))
-                      );
-                      if (alt) {
-                        const kept = candidate.items
-                          .filter((i) => i.clothing_item.id !== slot.clothing_item.id)
-                          .map((i) => i.clothing_item.id);
-                        replaceRecommendationItem(kept, slot.clothing_item.id, alt.id);
-                        runRecommendations();
-                        return;
-                      }
-                    }
-                    showAlert('No swap available', 'Add another similar item to replace a piece in this look.');
-                  }}
-                  onMirrorCheck={() => router.push('/mirror-check/consent')}
-                />
-              ))}
-            </View>
           )}
+
+          <View style={styles.quietRow}>
+            <Pressable onPress={() => runRecommendations()} accessibilityRole="button">
+              <Text style={[styles.quietLink, { color: theme.inkMuted }]}>Refresh ideas</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push('/outfits/builder')} accessibilityRole="link">
+              <Text style={[styles.quietLink, { color: theme.inkMuted }]}>Build an outfit</Text>
+            </Pressable>
+            <Pressable onPress={() => setWearMode('swipe')} accessibilityRole="button">
+              <Text style={[styles.quietLink, { color: theme.inkMuted }]}>Build from pieces</Text>
+            </Pressable>
+          </View>
+
+          {readyOutfits.length > 0 ? (
+            <View style={styles.sectionBlock}>
+              <View style={styles.sectionHead}>
+                <Text style={[styles.subhead, { color: theme.ink }]}>Ready outfits</Text>
+              </View>
+              <ReadyOutfitRow
+                outfits={readyOutfits}
+                onOpen={(id) => router.push(`/outfits/${id}`)}
+                onWear={wearSaved}
+              />
+            </View>
+          ) : null}
+
+          {freshRecs.length > 0 ? (
+            <View style={styles.sectionBlock}>
+              <View style={styles.sectionHead}>
+                <Text style={[styles.subhead, { color: theme.ink }]}>Fresh suggestions</Text>
+                <Pressable onPress={() => runRecommendations()} accessibilityRole="button">
+                  <Text style={[styles.quietLink, { color: theme.inkMuted, paddingVertical: 8 }]}>Refresh</Text>
+                </Pressable>
+              </View>
+              <View style={styles.recGrid}>
+                {freshRecs.map((candidate, index) => (
+                  <RecommendationCard
+                    key={`${candidate.template_id}-${index}`}
+                    candidate={candidate}
+                    {...recMeta}
+                    onWear={() => wearCandidate(candidate)}
+                    onSave={() => saveCandidate(candidate)}
+                    onReject={() => {
+                      recordFeedback(
+                        'rejected',
+                        candidate.items.map((i) => i.clothing_item.id)
+                      );
+                      runRecommendations();
+                    }}
+                    onReplace={() => {
+                      const roles = ['shoes', 'accessory', 'outerwear', 'top'] as const;
+                      for (const role of roles) {
+                        const slot = candidate.items.find((i) => i.role === role);
+                        if (!slot) continue;
+                        const alt = clothingItems.find(
+                          (c) =>
+                            c.availability_status === 'available' &&
+                            c.id !== slot.clothing_item.id &&
+                            (role === 'accessory'
+                              ? c.category === 'accessory'
+                              : c.category === role || (role === 'top' && c.category === 'top'))
+                        );
+                        if (alt) {
+                          const kept = candidate.items
+                            .filter((i) => i.clothing_item.id !== slot.clothing_item.id)
+                            .map((i) => i.clothing_item.id);
+                          replaceRecommendationItem(kept, slot.clothing_item.id, alt.id);
+                          runRecommendations();
+                          return;
+                        }
+                      }
+                      showAlert('No swap available', 'Add another similar item to replace a piece in this look.');
+                    }}
+                    onMirrorCheck={() => router.push('/mirror-check/consent')}
+                  />
+                ))}
+              </View>
+            </View>
+          ) : null}
         </>
       ) : (
         <>
+          <Pressable onPress={() => setWearMode('outfits')} accessibilityRole="button" style={{ marginBottom: 12 }}>
+            <Text style={[styles.quietLink, { color: theme.accent }]}>Back to today’s looks</Text>
+          </Pressable>
           {todayLook.length > 0 ? (
             <View style={[styles.tray, { borderColor: theme.border, backgroundColor: theme.bgElevated }]}>
               <Text style={{ ...typography.label, color: theme.ink }}>Today’s look ({todayLook.length})</Text>
@@ -328,7 +393,7 @@ export default function HomeScreen() {
             </View>
           ) : (
             <Text style={{ ...typography.body, color: theme.inkMuted, marginBottom: 12 }}>
-              Tinder-style through every available piece. Wear adds it to today’s look. Two pieces make an outfit.
+              Wear a piece to add it to today’s look. Two pieces make an outfit.
             </Text>
           )}
           {available.length === 0 ? (
@@ -356,26 +421,42 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  heroRow: { gap: 12, marginBottom: 8 },
-  heroWide: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  brand: { ...typography.brand, fontSize: 30 },
-  hello: { ...typography.title },
-  weather: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
-    minWidth: 180,
+  hero: { gap: 6, marginBottom: 28, maxWidth: 720 },
+  heroCompact: { marginBottom: 12, gap: 4 },
+  brand: { ...typography.brand, fontSize: 28, marginBottom: 8 },
+  greeting: { ...typography.label },
+  headline: { ...typography.hero, fontSize: 32, lineHeight: 38 },
+  headlineCompact: { fontSize: 26, lineHeight: 32 },
+  weatherLine: { ...typography.body, marginTop: 4 },
+  hint: { ...typography.caption },
+  filters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 8,
   },
-  weatherTemp: { ...typography.title },
-  quickLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  warn: { paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12 },
-  planned: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
-  section: { ...typography.subtitle, marginTop: 20, marginBottom: 8 },
-  subhead: { ...typography.label, marginTop: 16, marginBottom: 8 },
-  modeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  quick: { flexDirection: 'row', gap: 10, marginVertical: 12 },
-  outfitGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  recGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  filtersStack: { flexDirection: 'column', alignItems: 'stretch', gap: 10 },
+  selectRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 16 },
+  selectRowCompact: { width: '100%', justifyContent: 'space-between' },
+  moodWrap: { minWidth: 280, flexGrow: 1, maxWidth: 420 },
+  moodWrapFull: { minWidth: 0, maxWidth: '100%' },
+  quietRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  quietLink: { ...typography.label, minHeight: 44, paddingVertical: 12 },
+  sectionBlock: { marginTop: 28, gap: 12 },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  subhead: { ...typography.subtitle, fontFamily: 'DMSans_700Bold' },
+  recGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   tray: { borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 12, gap: 4 },
 });

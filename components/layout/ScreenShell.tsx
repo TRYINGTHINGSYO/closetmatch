@@ -1,8 +1,10 @@
 import { ScrollView, StyleSheet, type ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { WeatherAtmosphere } from '@/components/weather/WeatherAtmosphere';
 import { useTheme } from '@/hooks/useTheme';
 import { useWebLayout } from '@/hooks/useWebLayout';
+import type { WeatherSnapshot } from '@/types';
 import { PageContainer } from './PageContainer';
 
 export function ScreenShell({
@@ -10,11 +12,13 @@ export function ScreenShell({
   scroll = false,
   contentStyle,
   maxWidth,
+  weather = null,
 }: {
   children: React.ReactNode;
   scroll?: boolean;
   contentStyle?: ViewStyle;
   maxWidth?: number;
+  weather?: WeatherSnapshot | null;
 }) {
   const theme = useTheme();
   const { isWeb } = useWebLayout();
@@ -26,6 +30,7 @@ export function ScreenShell({
 
   return (
     <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={styles.fill}>
+      <WeatherAtmosphere weather={weather} />
       <SafeAreaView style={styles.fill} edges={isWeb ? [] : ['top']}>
         {scroll ? (
           <ScrollView

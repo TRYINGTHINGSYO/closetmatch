@@ -1,15 +1,19 @@
-import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Button } from '@/components/ui/Button';
+import { OutfitCollage, type OutfitCollagePiece } from '@/components/outfit/OutfitCollage';
 import { radii, typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useWebLayout } from '@/hooks/useWebLayout';
+import { itemSummaryLine, outfitDisplayName } from '@/lib/outfits/display-name';
+import { conciseOutfitReason } from '@/lib/outfits/reason';
 import type { OutfitCandidate } from '@/types';
-import { Button } from '@/components/ui/Button';
 
 export function RecommendationCard({
   candidate,
-  index,
+  occasion,
+  feelsLike,
+  temperatureUnit,
+  weatherCondition,
   onSave,
   onWear,
   onReject,
@@ -17,7 +21,10 @@ export function RecommendationCard({
   onMirrorCheck,
 }: {
   candidate: OutfitCandidate;
-  index: number;
+  occasion?: string | null;
+  feelsLike?: number | null;
+  temperatureUnit?: 'f' | 'c';
+  weatherCondition?: string | null;
   onSave?: () => void;
   onWear?: () => void;
   onReject?: () => void;
@@ -25,7 +32,26 @@ export function RecommendationCard({
   onMirrorCheck?: () => void;
 }) {
   const theme = useTheme();
-  const { wide } = useWebLayout();
+  const { compact } = useWebLayout();
+  const items = candidate.items.map((slot) => slot.clothing_item);
+  const title = outfitDisplayName({
+    items,
+    occasion,
+    feelsLike,
+    temperatureUnit,
+    weatherCondition,
+  });
+  const reason = conciseOutfitReason({
+    explanation: candidate.explanation,
+    items,
+    feelsLike,
+    temperatureUnit,
+  });
+  const pieces: OutfitCollagePiece[] = candidate.items.map((slot) => ({
+    id: slot.clothing_item.id,
+    role: slot.role,
+    clothing_item: slot.clothing_item,
+  }));
   const scorePct = Math.round(candidate.total_score * 100);
 
   return (
@@ -35,77 +61,41 @@ export function RecommendationCard({
         {
           backgroundColor: theme.bgElevated,
           borderColor: theme.border,
-          flexBasis: wide ? '48%' : '100%',
-          maxWidth: wide ? '48%' : '100%',
+          flexBasis: compact ? '100%' : 340,
         },
       ]}
-      accessibilityLabel={`Outfit recommendation ${index + 1}, match score ${scorePct} percent`}
+      accessibilityLabel={`Fresh look, ${title}, ${scorePct} percent match`}
     >
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.ink }]}>Suggestion {index + 1}</Text>
-        <View style={[styles.score, { backgroundColor: theme.accentSoft }]}>
-          <Text style={[styles.scoreText, { color: theme.accentDeep }]}>{scorePct}% match</Text>
+      <OutfitCollage pieces={pieces} size="fresh" />
+      <View style={styles.meta}>
+        <Text style={{ ...typography.caption, color: theme.inkSoft }}>Fresh</Text>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: theme.ink, flex: 1 }]}>{title}</Text>
+          <Text style={{ ...typography.caption, color: theme.inkSoft }}>{scorePct}%</Text>
         </View>
-      </View>
-
-      <View style={styles.thumbs}>
-        {candidate.items.map((slot) => {
-          const uri = slot.clothing_item.primary_image_url;
-          return (
-            <View
-              key={slot.clothing_item.id}
-              style={[styles.thumb, { borderColor: theme.border, backgroundColor: theme.accentSoft }]}
-            >
-              {uri ? (
-                <Image source={{ uri }} style={styles.thumbImage} />
-              ) : (
-                <LinearGradient colors={[theme.heroGlow, theme.accentSoft]} style={styles.thumbImage}>
-                  <Text style={{ color: theme.accentDeep, fontFamily: 'DMSans_700Bold' }}>
-                    {slot.clothing_item.primary_color.slice(0, 1).toUpperCase()}
-                  </Text>
-                </LinearGradient>
-              )}
-            </View>
-          );
-        })}
-      </View>
-
-      <View style={styles.items}>
-        {candidate.items.map((slot) => (
-          <View key={slot.clothing_item.id} style={[styles.itemChip, { borderColor: theme.border }]}>
-            <Text style={[styles.role, { color: theme.inkSoft }]}>{slot.role}</Text>
-            <Text style={[styles.itemName, { color: theme.ink }]}>{slot.clothing_item.name}</Text>
-          </View>
-        ))}
-      </View>
-
-      <Text style={[styles.summary, { color: theme.inkMuted }]}>{candidate.explanation.summary}</Text>
-      {candidate.explanation.reasons.slice(0, 3).map((r) => (
-        <Text key={r} style={[styles.reason, { color: theme.inkSoft }]}>
-          · {r}
-        </Text>
-      ))}
-
-      <View style={styles.actions}>
-        {onWear ? <Button title="Wear today" onPress={onWear} style={styles.btn} /> : null}
-        {onSave ? <Button title="Save" variant="secondary" onPress={onSave} style={styles.btn} /> : null}
-      </View>
-      <View style={styles.row}>
-        {onReplace ? (
-          <Pressable onPress={onReplace} accessibilityRole="button">
-            <Text style={{ color: theme.accent, ...typography.label }}>Replace item</Text>
-          </Pressable>
-        ) : null}
-        {onMirrorCheck ? (
-          <Pressable onPress={onMirrorCheck} accessibilityRole="button">
-            <Text style={{ color: theme.accent, ...typography.label }}>Mirror Check</Text>
-          </Pressable>
-        ) : null}
-        {onReject ? (
-          <Pressable onPress={onReject} accessibilityRole="button">
-            <Text style={{ color: theme.danger, ...typography.label }}>Reject</Text>
-          </Pressable>
-        ) : null}
+        <Text style={{ ...typography.body, color: theme.inkMuted }}>{reason}</Text>
+        <Text style={{ ...typography.caption, color: theme.inkSoft }}>{itemSummaryLine(items)}</Text>
+        <View style={styles.actions}>
+          {onWear ? <Button title="Wear today" onPress={onWear} style={styles.btn} /> : null}
+          {onSave ? <Button title="Save" variant="secondary" onPress={onSave} style={styles.btn} /> : null}
+        </View>
+        <View style={styles.row}>
+          {onReplace ? (
+            <Pressable onPress={onReplace} accessibilityRole="button">
+              <Text style={{ color: theme.inkMuted, ...typography.label }}>Replace</Text>
+            </Pressable>
+          ) : null}
+          {onMirrorCheck ? (
+            <Pressable onPress={onMirrorCheck} accessibilityRole="button">
+              <Text style={{ color: theme.inkMuted, ...typography.label }}>Mirror Check</Text>
+            </Pressable>
+          ) : null}
+          {onReject ? (
+            <Pressable onPress={onReject} accessibilityRole="button">
+              <Text style={{ color: theme.danger, ...typography.label }}>Reject</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -113,50 +103,21 @@ export function RecommendationCard({
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radii.lg,
-    padding: 16,
-    gap: 8,
-    marginBottom: 14,
-    flexGrow: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: { ...typography.subtitle },
-  score: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: radii.sm,
-  },
-  scoreText: { ...typography.caption, fontFamily: 'DMSans_700Bold' },
-  thumbs: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  thumb: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
     overflow: 'hidden',
-    borderWidth: 1,
+    flexGrow: 1,
+    maxWidth: '100%',
   },
-  thumbImage: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
-  items: { gap: 6, marginTop: 4 },
-  itemChip: {
-    borderWidth: 1,
-    borderRadius: radii.md,
-    padding: 10,
-  },
-  role: { ...typography.caption, textTransform: 'capitalize' },
-  itemName: { ...typography.label },
-  summary: { ...typography.body, marginTop: 4 },
-  reason: { ...typography.caption },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  btn: { flex: 1 },
+  meta: { padding: 16, gap: 8 },
+  titleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  title: { ...typography.subtitle, fontFamily: 'DMSans_700Bold' },
+  actions: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  btn: { flex: 1, minHeight: 44 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginTop: 4,
     gap: 12,
   },
 });

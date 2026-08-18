@@ -25,6 +25,22 @@ describe('appearance', () => {
     expect(themed.accentSoft.toLowerCase()).not.toBe('#c45c6a');
   });
 
+  it('keeps night-mode text and borders readable', () => {
+    const themed = applyAppearance(
+      colors.dark,
+      {
+        mode: 'dark',
+        colorTheme: 'sage',
+        accentColor: null,
+        backgroundStyle: 'night',
+        backgroundImageUri: null,
+      },
+      true
+    );
+    expect(themed.inkMuted).toBe('#C5D2CD');
+    expect(themed.border).toBe('#3E4E48');
+  });
+
   it('uses palette accents for named themes', () => {
     expect(
       resolveAccent({
